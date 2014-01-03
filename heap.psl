@@ -1,0 +1,97 @@
+//interface Heapable<> implements Imageable<>, Comparable<>, Assignable<> is
+//end interface Heapable;
+
+//--------TODO-----------
+//  test |=
+//  Pop
+//  fancy To_String
+//-----------------------
+interface Heap<E is Imageable<>> is
+    //log(n) insertion and removal heap implemented on ZVector
+    //Left child is located at 2 * n + 1
+    //Right child is located at 2 * n + 2 where n is the index of the current node
+    //Parent is located at (n - 1) / 2
+    //This allows the tree to be represented as an array
+    op "[]"() -> Heap;
+        //create empty Heap
+    op "|="(var H : Heap; Elem : E);
+        //adds element to heap
+    func Create(P : Polarity) -> Heap;
+        //creates a new empty heap with the given polarity
+    func Length(H : Heap) -> Univ_Integer;
+        //returns number of elements
+    func Pop(var H : Heap) -> optional E;
+        //pops highest priority from heap
+        //return null if H is empty
+    func To_String(H : Heap) -> Univ_String<>;
+        //returns a string representation of the heap
+end interface Heap;
+
+class Heap is
+        var Data : ZVector<E>;
+        type Polarity is Ordering {Polarity in [#less, #greater]};
+        //type Polarity is Enum<[#less, #greater]>;
+        const Pole : Polarity;
+
+        //Preserve Heap Order (Parent relation to both children must match Pole)
+        //Start at bottom and recurse up the tree
+        func Preserve_Order_Up(var H : Heap; N : Integer) is
+            if N == 0 then
+                return;
+            end if;
+            const Parent_Index := (N - 1) / 2;
+            const Child_Parent : Ordering := H.Data[N] =? H.Data[Parent_Index];
+            if Child_Parent == H.Pole then
+                H.Data[N] <=> H.Data[Parent_Index]
+                Preserve_Order_Up(H, Parent_Index)
+            end if;
+        end func Preserve_Order_Up;
+
+        //recursion for To_String
+        func To_String_Helper(H : Heap; Low, High : Univ_Integer) -> Univ_String is
+            const Len := High - Low;
+            if(Len == 1) then
+                return H.Data[Low].To_String();
+            elsif(Len == 2) then
+                return H.Data[Low].To_String() | ", " | H.Data[Low + 1].To_String();
+            else
+                const Half := Len / 2;
+                return H.To_String_Helper(0, Half) | ", " | H.To_String_Helper(Half, Len);
+            end if 
+        end func To_String_Helper;
+    exports
+        op "[]"() -> Heap is
+            return (Data => [], Pole => #less);
+        end op "[]";
+
+        op "|="(var H : Heap; Elem : E) is
+            H.Data |= Elem;
+            Preserve_Order_Up(H, H.Data.Length() - 1);
+        end op "|=";
+
+        func Create(P : Polarity) -> Heap is
+            return (Data => [], Pole => P);
+        end func Create;
+
+        func Length(H : Heap) -> Univ_Integer is
+            return H.Data.Length();
+        end func Length;
+
+        func Pop(var H : Heap) -> optional E is
+            //TODO preserve order
+            return null;
+        end func Pop;
+
+        func To_String(H : Heap) -> Univ_String<> is
+            //TODO tree representation
+            return "[" | To_String_Helper(H, 0, H.Data.Length()) | "]";
+        end func To_String;
+
+end class Heap;
+
+func Test() is
+    type Int_Heap is Heap<Univ_Integer>;
+    var H : Int_Heap := [];
+    H |= 1; H |= 2; H |= 3; H |=4;
+    Println(To_String(H));
+end func Test;
