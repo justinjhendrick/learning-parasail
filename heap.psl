@@ -1,12 +1,14 @@
-//interface Heapable<> implements Imageable<>, Comparable<>, Assignable<> is
-//end interface Heapable;
+interface Heapable<> is
+    type Full_Ordering is Ordering {Full_Ordering in [#less, #equal, #greater]}
+    op "=?"(Left, Right : Heapable) -> Full_Ordering
+    func To_String(Val : Heapable) -> Univ_String
+end interface Heapable;
 
 //--------TODO-----------
-//  test |=
-//  Pop
+//  test thoroughly
 //  fancy To_String
 //-----------------------
-interface Heap<E is Imageable<>> is
+concurrent interface Heap<E is Heapable<>> is
     //log(n) insertion and removal heap implemented on ZVector
     //Left child is located at 2 * n + 1
     //Right child is located at 2 * n + 2 where n is the index of the current node
@@ -14,28 +16,28 @@ interface Heap<E is Imageable<>> is
     //This allows the tree to be represented as an array
     op "[]"() -> Heap;
         //create empty Heap
-    op "|="(var H : Heap; Elem : E);
+    op "|="(locked var H : Heap; Elem : E);
         //adds element to heap
     func Create(P : Polarity) -> Heap;
         //creates a new empty heap with the given polarity
     func Length(H : Heap) -> Univ_Integer;
         //returns number of elements
-    func Pop(var H : Heap) -> optional E;
+    func Pop(locked var H : Heap) -> optional E;
         //pops highest priority from heap
         //return null if H is empty
     func To_String(H : Heap) -> Univ_String<>;
         //returns a string representation of the heap
 end interface Heap;
 
-class Heap is
+concurrent class Heap is
         var Data : ZVector<E>;
+        var Size : Univ_Integer;
         type Polarity is Ordering {Polarity in [#less, #greater]};
-        //type Polarity is Enum<[#less, #greater]>;
         const Pole : Polarity;
 
         //Preserve Heap Order (Parent relation to both children must match Pole)
         //Start at bottom and recurse up the tree
-        func Preserve_Order_Up(var H : Heap; N : Integer) is
+        func Preserve_Order_Up(locked var H : Heap; N : Integer) is
             if N == 0 then
                 return;
             end if;
@@ -47,51 +49,91 @@ class Heap is
             end if;
         end func Preserve_Order_Up;
 
+        //Recurses down the tree. Swaps nodes if necessary to preserve heap order
+        func Preserve_Order_Down(locked var H : Heap; N : Univ_Integer) is
+            const L := 2 * N + 1;
+            if L >= H.Size then
+                return;
+            end if;
+            const R := 2 * N + 2;
+            const Has_Right : Boolean := R < H.Size;
+            const Left_To_Parent : Ordering := H.Data[L] =? H.Data[N];
+            var Right_To_Parent : Ordering;
+            if Has_Right then
+                Right_To_Parent := H.Data[R] =? H.Data[N];
+            end if;
+            if Left_To_Parent == H.Pole or
+                    (Has_Right and then Right_To_Parent == H.Pole) then
+                if Has_Right then
+                    const Left_To_Right := H.Data[L] =? H.Data[R];
+                    const Right_To_Left := H.Data[R] =? H.Data[L];
+                    if Left_To_Right == H.Pole then
+                        H.Data[N] <=> H.Data[L];
+                        Preserve_Order_Down(H, L);
+                    elsif Right_To_Left == H.Pole then
+                        H.Data[N] <=> H.Data[R];
+                        Preserve_Order_Down(H, R);
+                    end if;
+                else
+                    H.Data[N] <=> H.Data[L];
+                end if;
+            end if;
+        end func Preserve_Order_Down;
+
         //recursion for To_String
         func To_String_Helper(H : Heap; Low, High : Univ_Integer) -> Univ_String is
             const Len := High - Low;
-            if(Len == 1) then
+            if Len == 0 then
+                return "";
+            elsif Len == 1 then
                 return H.Data[Low].To_String();
-            elsif(Len == 2) then
-                return H.Data[Low].To_String() | ", " | H.Data[Low + 1].To_String();
-            else
-                const Half := Len / 2;
-                return H.To_String_Helper(0, Half) | ", " | H.To_String_Helper(Half, Len);
-            end if 
+            end if;
+            const Half := Low + Len / 2;
+            return H.To_String_Helper(Low, Half) | ", " | H.To_String_Helper(Half, High);
         end func To_String_Helper;
     exports
         op "[]"() -> Heap is
-            return (Data => [], Pole => #less);
+            return (Data => [], Size => 0, Pole => #less);
         end op "[]";
 
-        op "|="(var H : Heap; Elem : E) is
+        op "|="(locked var H : Heap; Elem : E) is
             H.Data |= Elem;
-            Preserve_Order_Up(H, H.Data.Length() - 1);
+            H.Size += 1;
+            Preserve_Order_Up(H, H.Size - 1);
         end op "|=";
 
         func Create(P : Polarity) -> Heap is
-            return (Data => [], Pole => P);
+            return (Data => [], Size => 0, Pole => P);
         end func Create;
 
         func Length(H : Heap) -> Univ_Integer is
-            return H.Data.Length();
+            return H.Size;
         end func Length;
 
-        func Pop(var H : Heap) -> optional E is
-            //TODO preserve order
-            return null;
+        func Pop(locked var H : Heap) -> optional E is
+            if H.Size == 0 then
+                return null;
+            end if;
+            H.Data[0] <=> H.Data[H.Size - 1];
+            const To_Return <== H.Data[H.Size - 1];
+            H.Size -= 1;
+            Preserve_Order_Down(H, 0);
+            return To_Return;
         end func Pop;
 
         func To_String(H : Heap) -> Univ_String<> is
             //TODO tree representation
-            return "[" | To_String_Helper(H, 0, H.Data.Length()) | "]";
+            return "[" | H.To_String_Helper(0, H.Size) | "]";
         end func To_String;
-
 end class Heap;
 
 func Test() is
     type Int_Heap is Heap<Univ_Integer>;
     var H : Int_Heap := [];
-    H |= 1; H |= 2; H |= 3; H |=4;
-    Println(To_String(H));
+    for I in 0..<50 concurrent loop
+        H |= I;
+    end loop;
+    for I in 0..<50 concurrent loop
+        Print(H.Pop() | ", ");
+    end loop;
 end func Test;
