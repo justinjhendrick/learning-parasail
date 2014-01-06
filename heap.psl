@@ -6,7 +6,13 @@ end interface Heapable;
 
 //--------TODO---------------------
 //  test |= and Pop thoroughly
-//  test To_String_Tree thoroughly
+//  To_String_Tree
+//      Size 0 or 1 heap
+//      Limit size of Element To_String in To_String_Tree
+//  Pre and Post Conditions
+//  Which functions should be Locked?
+//      Originally I thought only ones with (var H : Heap ...)
+//      But read-only things like To_String could get an index OOB if another thread is editing the Heap
 //---------------------------------
 concurrent interface Heap<E is Heapable<>> is
     //log(n) insertion and removal heap implemented on ZVector
@@ -27,9 +33,13 @@ concurrent interface Heap<E is Heapable<>> is
         //return null if H is empty
     func To_String(H : Heap) -> Univ_String<>;
         //returns a string representation of the heap
+    func To_String_Tree(locked H : Heap) -> Univ_String<>;
+        //returns the elements organized into a tree in a ZString
 end interface Heap;
 
 concurrent class Heap is
+        type Int_ZVector is ZVector<Univ_Integer>;
+        type Str_Array is Array<ZString, Integer>;
         var Data : ZVector<E>;
         var Size : Univ_Integer;
         type Polarity is Ordering {Polarity in [#less, #greater]};
@@ -80,7 +90,7 @@ concurrent class Heap is
             end if;
         end func Preserve_Order_Down;
 
-        //recursion for To_String
+        //divide and conquer recursion for To_String
         func To_String_Helper(H : Heap; Low, High : Univ_Integer) -> Univ_String is
             const Len := High - Low;
             if Len == 0 then
@@ -92,32 +102,17 @@ concurrent class Heap is
             return H.To_String_Helper(Low, Half) | ", " | H.To_String_Helper(Half, High);
         end func To_String_Helper;
 
-        func To_String_Tree(H : Heap) -> Univ_String is
-            const Height := H.Tree_Height();
-            var Width := 1;
-            var Col := 0;
-            var Row := 0;
-            var Result : ZString := " " * (2**(Height - Row - 1));
-            for I in 0 ..< H.Size forward loop
-                Col += 1;
-                if Col == 1 then
-                    Row += 1;
-                end if;
-                Result |= H.Data[I].To_String() | " " * (2 * 2**(Height - Row) - 1);
-                if Col == Width then
-                    Result |= "\n" | " " * (2**(Height - Row - 1));
-                    Width *= 2;
-                    Col := 0;
-                end if;
-            end loop
-            return Result;
-        end func To_String_Tree;
 
-        func Tree_Height(H : Heap) -> Univ_Integer is
+        //TODO: wait for ability to return multiple things
+        //instead of passing widths as a var parameter
+        //Computes the Height of the tree and returns a vector of tree widths
+        //for use by To_String_Tree
+        func Tree_Height(var Widths : Int_ZVector) -> Univ_Integer is
             var Width := 1;
             var Height := 0;
             var Col := 0;
-            for I in 0 ..< H.Size forward loop
+            for I in 0 ..< Widths.Length() forward loop
+                Widths[I] := Width;
                 Col += 1;
                 if Col == 1 then
                     Height += 1;
@@ -129,6 +124,29 @@ concurrent class Heap is
             end loop
             return Height;
         end func Tree_Height;
+
+        //TODO: wait for ability to return multiple things
+        //Return size of largest element to string
+        //for use by To_String_Tree
+        func To_Strings_Elem_Size(locked H : Heap; var Strings : Str_Array) -> Univ_Integer is
+            var Max_Elem_Size := 0;
+            for I in 0 ..< Strings.Length() forward loop
+                const Size := H.Data[I].To_String().Length();
+                if Size > Max_Elem_Size then
+                    Max_Elem_Size := Size;
+                end if;
+            end loop;
+            //TODO: Uncomment this once trimming is done
+            //if Max_Elem_Size > 4 then
+            //    Max_Elem_Size := 4;
+            //end if;
+            for I in 0 ..< Strings.Length() concurrent loop
+                const Str := H.Data[I].To_String();
+                Strings[I] := (" " * (Max_Elem_Size - Str.Length())) | Str;
+                //TODO trim things longer than 4
+            end loop;
+            return Max_Elem_Size;
+        end func To_Strings_Elem_Size;
 
     exports
         op "[]"() -> Heap is
@@ -161,21 +179,51 @@ concurrent class Heap is
         end func Pop;
 
         func To_String(H : Heap) -> Univ_String<> is
-            //return "[" | H.To_String_Helper(0, H.Size) | "]";
-            return H.To_String_Tree();
+            return "[" | H.To_String_Helper(0, H.Size) | "]";
         end func To_String;
+
+        //Fancy tree representation of Heap
+        func To_String_Tree(locked H : Heap) -> Univ_String is
+            //const H_Copy : Heap := H;
+            var Strings : Str_Array := Str_Array::Create(0 ..< H.Size, "");
+            const Elem_Size : Univ_Integer := H.To_Strings_Elem_Size(Strings);
+            var Widths : Int_ZVector := Int_ZVector::Create(H.Size, 0);
+            const Height := Tree_Height(Widths);
+            var Col := 0;
+            var Row := 0;
+            var Result : ZString := "";
+            const Root_Left_Blanks := Height - Row >= 1 ? Elem_Size * (2**(Height - Row - 1) - 1) : 0;
+            Result |= " " * Root_Left_Blanks;
+            for I in 0 ..< H.Size forward loop
+                Col += 1;
+                if Col == 1 then
+                    Row += 1;
+                end if;
+                Result |= Strings[I];
+                if Col == Widths[I] then
+                    Result |= "\n";
+                    const Left_Blanks := Height - Row >= 1 ? Elem_Size * (2**(Height - Row - 1) - 1) : 0;
+                    Result |= " " * Left_Blanks;
+                    Col := 0;
+                else
+                    const Inter_Blanks := Height - Row >= 0 ? Elem_Size * (2 * 2**(Height - Row) - 1) : 0;
+                    Result |= " " * Inter_Blanks;
+                end if;
+            end loop
+            return Result;
+        end func To_String_Tree;
 end class Heap;
 
 
 func Test() is
     type Int_Heap is Heap<Univ_Integer>;
-    var H : Int_Heap := [];
-    for J in 1 .. 3 forward loop
-        for I in 1 .. 9 concurrent loop
-            H |= I;
+    var H : Int_Heap := Int_Heap::Create(#less);
+    for J in 0 .. 3 concurrent loop
+        for I in 0 .. 3 concurrent loop
+            H |= I + J;
+            Println(H.To_String_Tree());
         end loop;
     end loop;
-    Println(H.To_String());
     //for I in 0..<50 concurrent loop
     //    Print(H.Pop() | ", ");
     //end loop;
