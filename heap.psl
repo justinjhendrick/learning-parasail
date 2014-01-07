@@ -2,18 +2,11 @@ interface Heapable<> is
     type Full_Ordering is Ordering {Full_Ordering in [#less, #equal, #greater]}
     op "=?"(Left, Right : Heapable) -> Full_Ordering
     func To_String(Val : Heapable) -> Univ_String
+    //Also assignable, but everything is Assignable<>
 end interface Heapable;
 
 //--------TODO---------------------------------------------------------------------
-//  test |= and Pop thoroughly
-//  implement magnitude operator
-//  To_String_Tree
-//      Limit size of Element To_String
-//  Pre and Post Conditions
-//  Which functions should be Locked?
-//      Originally I thought only ones with (var H : Heap). But, read-only things
-//      like To_String could get an index OOB or some other error if another thread
-//      is editing the Heap at the same time
+//  Wait for ability to return multiple things
 //---------------------------------------------------------------------------------
 concurrent interface Heap<E is Heapable<>> is
     //log(n) insertion and removal heap implemented on ZVector
@@ -23,25 +16,26 @@ concurrent interface Heap<E is Heapable<>> is
     //This allows the tree to be represented as an array
     op "[]"() -> Heap;
         //create empty Heap
-    op "|="(locked var H : Heap; Elem : E);
+    op "|="(locked var H : Heap; Elem : E) {Length(H') == Length(H) + 1};
         //adds element to heap
     op "magnitude"(H : Heap) -> Univ_Integer is Length;
     func Create(P : Polarity) -> Heap;
         //creates a new empty heap with the given polarity
     func Length(H : Heap) -> Univ_Integer;
         //returns number of elements
-    func Pop(locked var H : Heap) -> optional E;
+    func Pop(locked var H : Heap) -> optional E {Length(H') <= Length(H)};
         //pops highest priority from heap
         //return null if H is empty
     func To_String(locked H : Heap) -> Univ_String<>;
         //returns a string representation of the heap
     func To_String_Tree(locked H : Heap) -> Univ_String<>;
-        //returns the elements organized into a tree in a ZString
+        //returns the elements organized into a tree in a String
 end interface Heap;
 
 concurrent class Heap is
         type Int_ZVector is ZVector<Univ_Integer>; //ZVector of Integers
-        type Str_Array is Array<ZString, Integer>; //Array of ZStrings indexed by Integers
+        //Array of strings indexed by Integers
+        type Str_Array is Array<Univ_String, Univ_Integer>;
         var Data : ZVector<E>; //Data storage for Heap
         var Size : Univ_Integer; //Number of non-null elements in Data
         type Polarity is Ordering {Polarity in [#less, #greater]}; //Polarity type
@@ -154,16 +148,21 @@ concurrent class Heap is
                     Max_Elem_Size := Size;
                 end if;
             end loop;
+            const Imposed_Max := 5
             //Tree To_String grows in width very quickly, trim the To_Strings to make
             //the size manigable
-            //TODO: Uncomment this once trimming is done
-            //if Max_Elem_Size > 4 then
-            //    Max_Elem_Size := 4;
-            //end if;
+            if Max_Elem_Size > Imposed_Max then
+                Max_Elem_Size := Imposed_Max;
+            end if;
             for I in 0 ..< Strings.Length() concurrent loop
                 const Str := H.Data[I].To_String();
-                Strings[I] := (" " * (Max_Elem_Size - Str.Length())) | Str;
-                //TODO trim things longer than 4
+                if Str.Length() <= Max_Elem_Size then
+                    //Add blanks to beginning
+                    Strings[I] := (" " * (Max_Elem_Size - Str.Length())) | Str;
+                elsif Str.Length() > Max_Elem_Size then
+                    //only use beginning up to max
+                    Strings[I] := Str[1 .. Max_Elem_Size - 1] | "…";
+                end if
             end loop;
             return Max_Elem_Size;
         end func To_Strings_Elem_Size;
@@ -173,7 +172,7 @@ concurrent class Heap is
             return (Data => [], Size => 0, Pole => #less); //minHeap is default
         end op "[]";
 
-        op "|="(locked var H : Heap; Elem : E) is
+        op "|="(locked var H : Heap; Elem : E) {Length(H') == Length(H) + 1} is
             if H.Data.Length() == H.Size then //no nulls, concatenate onto end
                 H.Data |= Elem;
             else //there are some nulls at the end, replace the first one
@@ -191,7 +190,7 @@ concurrent class Heap is
             return H.Size;
         end func Length;
 
-        func Pop(locked var H : Heap) -> optional E is
+        func Pop(locked var H : Heap) -> optional E {Length(H') <= Length(H)} is
             if H.Size == 0 then
                 return null;
             end if;
@@ -215,7 +214,7 @@ concurrent class Heap is
             const Height := Tree_Height(Widths);
             var Col := 0;
             var Row := 0;
-            var Result : ZString := "";
+            var Result : Univ_String := "";
             //? operator used to ensure 2**negative doesn't happen
             //Number of blanks to the left of the root
             const Root_Left_Blanks := Height - Row >= 1 ? Elem_Size * (2**(Height - Row - 1) - 1) : 0;
@@ -245,18 +244,18 @@ end class Heap;
 
 func Test() is
     type Int_Heap is Heap<Univ_Integer>;
-    var H : Int_Heap := Int_Heap::Create(#less);
+    var H : Int_Heap := Int_Heap::Create(#greater);
     for J in 0 ..< 3 concurrent loop
         for I in 0 ..< 3 concurrent loop
             H |= I + J;
         end loop;
     end loop;
     Println(H.To_String_Tree());
-    for I in 0 .. 10 concurrent loop    
+    for I in 0 .. 10 forward loop    
         Println("Popped " | H.Pop());
         if I == 5 then
-            for J in 0 ..< 10 concurrent loop
-                H |= J * 3;
+            for J in 10000 ..< 10010 concurrent loop
+                H |= J * 10;
             end loop;
         end if;
         Println(H.To_String_Tree());
