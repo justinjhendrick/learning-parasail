@@ -1,0 +1,87 @@
+interface Complex<> is
+    op "+"(Complex; Complex) -> Complex; //Addition with Reals and other Complexes
+    op "+"(Complex; Univ_Real) -> Complex;
+    op "+"(Univ_Real; Complex) -> Complex;
+    op "*"(Complex; Complex) -> Complex; //Multiplication with Reals and other Complexes
+    op "*"(Complex; Univ_Real) -> Complex;
+    op "*"(Univ_Real; Complex) -> Complex;
+    op "**"(Complex; Exp : Integer) {Exp >= 0} -> Complex; //Integer exponentiation
+    func Create(Univ_Real; Univ_Real) -> Complex; //Return a Complex Number with
+    //first parameter real part and second imaginary part.
+    func Is_Real(Complex) -> Boolean; //Return "Imaginary part is Zero"
+    func Re(Complex) -> Univ_Real; //Return Real Part
+    func Im(Complex) -> Univ_Real; //Return Imaginary Part
+    func To_String(Complex) -> Univ_String; //returns a string with
+    //real part +/- imaginary part i
+end interface Complex;
+
+//----------------TODO----------------
+//  Test
+//  Univ_Integer inputs and operators
+//------------------------------------
+
+class Complex<> is
+        //Immutable Complex Number with Real Part and Imaginary Part represented by
+        //Two Real numbers
+        const R : Univ_Real;
+        const I : Univ_Real;
+    exports
+        op "+"(Left : Complex; Right : Complex) -> Complex is
+            return (R => Left.R + Right.R, I => Left.I + Right.I);
+        end op "+";
+        op "+"(Left : Complex; Right : Univ_Real) -> Complex is
+            return (R => Left.R + Right, I => Left.I);
+        end op "+";
+        op "+"(Left : Univ_Real; Right : Complex) -> Complex is
+            return Right + Left;
+        end op "+";
+        op "*"(Left : Complex; Right : Complex) -> Complex is
+            return (R => Left.R * Right.R - Left.I * Right.I,
+                    I => Left.R * Right.I + Left.I * Right.R);
+        end op "*";
+        op "*"(Left : Complex; Right : Univ_Real) -> Complex is
+            return (R => Left.R * Right, I => Left.I * Right);
+        end op "*";
+        op "*"(Left : Univ_Real; Right : Complex) -> Complex is
+            return Right * Left;
+        end op "*";
+        op "**"(Base : Complex; Exp : Integer) {Exp >= 0} -> Complex is
+            if Exp == 0 then
+                return (R => 1.0, I => 0.0);
+            elsif Exp == 1 then
+                return Base;
+            elsif Exp == 2 then
+                return Base * Base;
+            end if;
+            return Base * Base ** (Exp - 1);
+        end op "**";
+        func Create(Univ_Real_Part : Univ_Real; Imaginary_Part : Univ_Real) -> Complex is
+            return (R => Univ_Real_Part, I => Imaginary_Part);
+        end func Create;
+        func Is_Real(C : Complex) -> Boolean is
+            return C.I < 0.000001 and C.I > -0.000001;
+        end func Is_Real;
+        func Re(C : Complex) -> Univ_Real is
+            return C.R;
+        end func Re;
+        func Im(C : Complex) -> Univ_Real is
+            return C.I;
+        end func Im;
+        func To_String(C : Complex) -> Result : Univ_String is
+            Result := C.R.To_String();
+            if C.I >= 0.0 then
+                Result |= " + ";
+                Result |= C.I.To_String();
+            else
+                Result |= " - ";
+                const Str := C.I.To_String();
+                Result |= Str[2 .. Str.Length()];
+            end if;
+            return Result | "i";
+        end func To_String;
+end class Complex;
+
+func Test() is
+    const i : Complex := Complex::Create(0.0, 1.0);
+    Println(i.To_String());
+end func Test;
