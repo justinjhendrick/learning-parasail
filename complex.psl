@@ -1,23 +1,39 @@
 interface Complex<> is
+    //operators
     op "+"(Complex; Complex) -> Complex; //Addition with Reals and other Complexes
     op "+"(Complex; Univ_Real) -> Complex;
+    op "+"(Complex; Univ_Integer) -> Complex;
     op "+"(Univ_Real; Complex) -> Complex;
+    op "+"(Univ_Integer; Complex) -> Complex;
+    op "-"(Complex) -> Complex;          //Subtraction with Reals and other Complexes
+    op "-"(Complex; Complex) -> Complex;
+    op "-"(Complex; Univ_Real) -> Complex;
+    op "-"(Complex; Univ_Integer) -> Complex;
+    op "-"(Univ_Real; Complex) -> Complex;
     op "*"(Complex; Complex) -> Complex; //Multiplication with Reals and other Complexes
     op "*"(Complex; Univ_Real) -> Complex;
+    op "*"(Complex; Univ_Integer) -> Complex;
     op "*"(Univ_Real; Complex) -> Complex;
-    op "**"(Complex; Exp : Integer) {Exp >= 0} -> Complex; //Integer exponentiation
-    func Create(Univ_Real; Univ_Real) -> Complex; //Return a Complex Number with
-    //first parameter real part and second imaginary part.
+    op "*"(Univ_Integer; Complex) -> Complex;
+    op "**"(Complex; Univ_Integer) {Exp >= 0} -> Complex; //Integer exponentiation
+
+    //Constructors
+    func Create(Univ_Real; Univ_Real) -> Complex;       //Return a Complex Number with
+    func Create(Univ_Real; Univ_Integer) -> Complex;    //first parameter real
+    func Create(Univ_Integer; Univ_Real) -> Complex;    //and second imaginary
+    func Create(Univ_Integer; Univ_Integer) -> Complex; //for real or integer input
+
+    //Utilities
     func Is_Real(Complex) -> Boolean; //Return "Imaginary part is Zero"
     func Re(Complex) -> Univ_Real; //Return Real Part
     func Im(Complex) -> Univ_Real; //Return Imaginary Part
     func To_String(Complex) -> Univ_String; //returns a string with
-    //real part +/- imaginary part i
+    //real_part '+' or '-' imaginary_part 'i'
 end interface Complex;
 
 //----------------TODO----------------
 //  Test
-//  Univ_Integer inputs and operators
+//  from_univ (maybe)
 //------------------------------------
 
 class Complex<> is
@@ -29,23 +45,65 @@ class Complex<> is
         op "+"(Left : Complex; Right : Complex) -> Complex is
             return (R => Left.R + Right.R, I => Left.I + Right.I);
         end op "+";
+
         op "+"(Left : Complex; Right : Univ_Real) -> Complex is
             return (R => Left.R + Right, I => Left.I);
         end op "+";
+
+        op "+"(Left : Complex; Right : Univ_Integer) -> Complex is
+            return (R => Left.R + Int_To_Real(Right), I => Left.I);
+        end op "+";
+
         op "+"(Left : Univ_Real; Right : Complex) -> Complex is
             return Right + Left;
         end op "+";
+
+        op "+"(Left : Univ_Integer; Right : Complex) -> Complex is
+            return Int_To_Real(Left) + Right;
+        end op "+";
+
+        op "-"(Right : Complex) -> Complex is //negate operator
+            return -1 * Right;
+        end op "-";
+
+        op "-"(Left : Complex; Right : Complex) -> Complex is
+            return (R => Left.R - Right.R, I => Left.I - Right.I);
+        end op "-";
+
+        op "-"(Left : Complex; Right : Univ_Real) -> Complex is
+            return (R => Left.R - Right, I => Left.I);
+        end op "-";
+
+        op "-"(Left : Complex; Right : Univ_Integer) -> Complex is
+            return (R => Left.R - Int_To_Real(Right), I => Left.I);
+        end op "-";
+
+        op "-"(Left : Univ_Real; Right : Complex) -> Complex is
+            return Left + (-Right);
+        end op "-";
+
         op "*"(Left : Complex; Right : Complex) -> Complex is
             return (R => Left.R * Right.R - Left.I * Right.I,
                     I => Left.R * Right.I + Left.I * Right.R);
         end op "*";
+
         op "*"(Left : Complex; Right : Univ_Real) -> Complex is
             return (R => Left.R * Right, I => Left.I * Right);
         end op "*";
+
+        op "*"(Left : Complex; Right : Univ_Integer) -> Complex is
+            return (R => Left.R * Int_To_Real(Right), I => Left.I * Int_To_Real(Right));
+        end op "*";
+
         op "*"(Left : Univ_Real; Right : Complex) -> Complex is
             return Right * Left;
         end op "*";
-        op "**"(Base : Complex; Exp : Integer) {Exp >= 0} -> Complex is
+
+        op "*"(Left : Univ_Integer; Right : Complex) -> Complex is
+            return Int_To_Real(Left) * Right;
+        end op "*";
+
+        op "**"(Base : Complex; Exp : Univ_Integer) {Exp >= 0} -> Complex is
             if Exp == 0 then
                 return (R => 1.0, I => 0.0);
             elsif Exp == 1 then
@@ -55,33 +113,62 @@ class Complex<> is
             end if;
             return Base * Base ** (Exp - 1);
         end op "**";
-        func Create(Univ_Real_Part : Univ_Real; Imaginary_Part : Univ_Real) -> Complex is
-            return (R => Univ_Real_Part, I => Imaginary_Part);
+
+        func Create(Real : Univ_Real; Imaginary : Univ_Real) -> Complex is
+            return (R => Real, I => Imaginary);
         end func Create;
+
+        func Create(Real : Univ_Real; Imaginary : Univ_Integer) -> Complex is
+            return (R => Real, I => Int_To_Real(Imaginary));
+        end func Create;
+
+        func Create(Real : Univ_Integer; Imaginary : Univ_Real) -> Complex is
+            return (R => Int_To_Real(Real), I => Imaginary);
+        end func Create;
+
+        func Create(Real : Univ_Integer; Imaginary : Univ_Integer) -> Complex is
+            return (R => Int_To_Real(Real), I => Int_To_Real(Imaginary));
+        end func Create;
+
         func Is_Real(C : Complex) -> Boolean is
             return C.I < 0.000001 and C.I > -0.000001;
         end func Is_Real;
+
         func Re(C : Complex) -> Univ_Real is
             return C.R;
         end func Re;
+
         func Im(C : Complex) -> Univ_Real is
             return C.I;
         end func Im;
+
         func To_String(C : Complex) -> Result : Univ_String is
             Result := C.R.To_String();
             if C.I >= 0.0 then
                 Result |= " + ";
                 Result |= C.I.To_String();
             else
-                Result |= " - ";
+                Result |= " - "; //add my own minus
                 const Str := C.I.To_String();
-                Result |= Str[2 .. Str.Length()];
+                Result |= Str[2 .. Str.Length()]; //do not include the minus
             end if;
-            return Result | "i";
+            return Result | "i"; //tack on the i
         end func To_String;
 end class Complex;
 
 func Test() is
-    const i : Complex := Complex::Create(0.0, 1.0);
+    const i : Complex := Complex::Create(0, 1);
+    const one : Complex := Complex::Create(1, 0); 
+    Println(one.To_String());
     Println(i.To_String());
+    Println(To_String(one * i));
+    Println(To_String(i * i) | " == " | To_String(i ** 2) | " == -1");
+    Println(To_String(i ** 3) | " == -1i");
+    Println("--------------------------------");
+    const a : Complex := Complex::Create(1, 1);
+    Println(a.To_String());
+    Println(To_String(a + one));
+    Println(To_String(a * one));
+    Println(To_String(a + i));
+    Println(To_String(a * i));
 end func Test;
