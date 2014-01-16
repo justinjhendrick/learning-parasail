@@ -1,0 +1,250 @@
+interface Even<> implements Countable<> is
+    op "+"(Even; Univ_Integer) -> Even;
+    op "+"(Univ_Integer; Even) -> Even;
+    op "-"(Even; Univ_Integer) -> Even;
+    op "-"(Even; Even) -> Univ_Integer;
+    op "=?"(Even; Even) -> Ordered::Full_Ordering;
+    op "from_univ"(Univ_Integer) -> optional Even is Create;
+    func Create(Univ_Integer) -> optional Even;
+    func First() -> Even;
+    func Last() -> Even;
+    func Min(optional Even; optional Even) -> optional Even;
+    func Max(optional Even; optional Even) -> optional Even;
+    func Hash(Even) -> Univ_Integer
+    func To_String(Even) -> Univ_String;
+    func To_Int(Even) -> Univ_Integer;
+    op ".."(Even; Even) -> Countable_Set<Even>
+      is in Countable_Set<Even>
+    op "<.."(Even; Even) -> Countable_Set<Even>
+      is in Countable_Set<Even>
+    op "..<"(Even; Even) -> Countable_Set<Even>
+      is in Countable_Set<Even>
+    op "<..<"(Even; Even) -> Countable_Set<Even>
+      is in Countable_Set<Even>
+    op "|"(Even; Even) -> Countable_Set<Even>
+      is in Countable_Set<Even>
+end interface Even;
+
+class Even implements Countable<> is
+    const Val : Univ_Integer;
+    exports
+
+    op "+"(Left : Even; Right : Univ_Integer) -> Even is
+        return (Val => Left.Val + 2 * Right);
+    end op "+";
+
+    op "+"(Left : Univ_Integer; Right : Even) -> Even is
+        return Right + Left;
+    end op "+";
+
+    op "-"(Left : Even; Right : Univ_Integer) -> Even is
+        return (Val => Left.Val - 2 * Right);
+    end op "-";
+
+    op "-"(Left, Right : Even) -> Univ_Integer is
+        return Left.Val - Right.Val;
+    end op "-";
+
+    op "=?"(Left, Right : Even) -> Ordered::Full_Ordering is
+        return Left.Val =? Right.Val;
+    end op "=?";
+
+    func Create(N : Univ_Integer) -> optional Even is
+        if N mod 2 == 0 then
+            return (Val => N);
+        else
+            return null
+        end if;
+    end func Create;
+
+    func First() -> Even is
+        return Univ_Integer::First();
+    end func First;
+
+    func Last() -> Even is
+        return Univ_Integer::Last();
+    end func Last;
+
+    func Min(Left, Right : optional Even) -> optional Even is
+        return Min(Left.Val, Right.Val);
+    end func Min;
+
+    func Max(Left, Right : optional Even) -> optional Even is
+        return Max(Left.Val, Right.Val);
+    end func Max;
+
+    func Hash(E : Even) -> Univ_Integer is
+        return E.Val;
+    end func Hash;
+
+    func To_String(E : Even) -> Univ_String is
+        return "" | E.Val;
+    end func To_String;
+
+    func To_Int(E : Even) -> Univ_Integer is
+        return E.Val;
+    end func To_Int;
+end class Even;
+
+interface Odd<> implements Countable<> is
+    op "+"(Odd; Univ_Integer) -> Odd;
+    op "+"(Univ_Integer; Odd) -> Odd;
+    op "-"(Odd; Univ_Integer) -> Odd;
+    op "-"(Odd; Odd) -> Univ_Integer;
+    op "=?"(Odd; Odd) -> Ordered::Full_Ordering;
+    op "from_univ"(Univ_Integer) -> optional Odd is Create;
+    func Create(Univ_Integer) -> optional Odd;
+    func First() -> Odd;
+    func Last() -> Odd;
+    func Min(optional Odd; optional Odd) -> optional Odd;
+    func Max(optional Odd; optional Odd) -> optional Odd;
+    func Hash(Odd) -> Univ_Integer
+    func To_String(Odd) -> Univ_String;
+    func To_Int(Odd) -> Univ_Integer;
+    op ".."(Odd; Odd) -> Countable_Set<Odd>
+      is in Countable_Set<Odd>
+    op "<.."(Odd; Odd) -> Countable_Set<Odd>
+      is in Countable_Set<Odd>
+    op "..<"(Odd; Odd) -> Countable_Set<Odd>
+      is in Countable_Set<Odd>
+    op "<..<"(Odd; Odd) -> Countable_Set<Odd>
+      is in Countable_Set<Odd>
+    op "|"(Odd; Odd) -> Countable_Set<Odd>
+      is in Countable_Set<Odd>
+end interface Odd;
+
+class Odd implements Countable<> is
+    const Val : Univ_Integer;
+    exports
+
+    op "+"(Left : Odd; Right : Univ_Integer) -> Odd is
+        return (Val => Left.Val + 2 * Right);
+    end op "+";
+
+    op "+"(Left : Univ_Integer; Right : Odd) -> Odd is
+        return Right + Left;
+    end op "+";
+
+    op "-"(Left : Odd; Right : Univ_Integer) -> Odd is
+        return (Val => Left.Val - 2 * Right);
+    end op "-";
+
+    op "-"(Left, Right : Odd) -> Univ_Integer is
+        return Left.Val - Right.Val;
+    end op "-";
+
+    op "=?"(Left, Right : Odd) -> Ordered::Full_Ordering is
+        return Left.Val =? Right.Val;
+    end op "=?";
+
+    func Create(N : Univ_Integer) -> optional Odd is
+        if N mod 2 == 1 then
+            return (Val => N);
+        else
+            return null
+        end if;
+    end func Create;
+
+    func First() -> Odd is
+        return Univ_Integer::First();
+    end func First;
+
+    func Last() -> Odd is
+        return Univ_Integer::Last();
+    end func Last;
+
+    func Min(Left, Right : optional Odd) -> optional Odd is
+        return Min(Left.Val, Right.Val);
+    end func Min;
+
+    func Max(Left, Right : optional Odd) -> optional Odd is
+        return Max(Left.Val, Right.Val);
+    end func Max;
+
+    func Hash(O : Odd) -> Univ_Integer is
+        return O.Val;
+    end func Hash;
+
+    func To_String(O : Odd) -> Univ_String is
+        return "" | O.Val;
+    end func To_String;
+
+    func To_Int(O : Odd) -> Univ_Integer is
+        return O.Val;
+    end func To_Int;
+end class Odd;
+
+concurrent interface Min_Int<> is
+    func Create(Univ_Integer) -> Min_Int;
+    op "from_univ"(Univ_Integer) -> Min_Int is Create;
+    func Update(locked var Min_Int; Univ_Integer);
+    func Get(Min_Int) -> Univ_Integer;
+    func To_String(Min_Int) -> Univ_String;
+end interface Min_Int;
+
+//Only updates if Parameter is smaller than current value
+concurrent class Min_Int is
+    var Val : Univ_Integer;
+    exports
+
+    func Create(N : Univ_Integer) -> Min_Int is
+        return (Val => N);
+    end func Create;
+
+    func Update(locked var MI : Min_Int; New_Val : Univ_Integer) is
+        if New_Val < MI.Val then
+            MI.Val := New_Val;
+        end if;
+    end func Update
+
+    func Get(MI : Min_Int) -> Univ_Integer is
+        return MI.Val;
+    end func Get;
+
+    func To_String(MI : Min_Int) -> Univ_String is
+        return "" | MI.Val;
+    end func To_String;
+end class Min_Int;
+
+concurrent interface Max_Int<> is
+    func Create(Univ_Integer) -> Max_Int;
+    op "from_univ"(Univ_Integer) -> Max_Int is Create;
+    func Update(locked var Max_Int; Univ_Integer);
+    func Get(Max_Int) -> Univ_Integer;
+    func To_String(Max_Int) -> Univ_String;
+end interface Max_Int;
+
+//Only updates if Parameter is smaller than current value
+concurrent class Max_Int is
+    var Val : Univ_Integer;
+    exports
+
+    func Create(N : Univ_Integer) -> Max_Int is
+        return (Val => N);
+    end func Create;
+
+    func Update(locked var MI : Max_Int; New_Val : Univ_Integer) is
+        if New_Val > MI.Val then
+            MI.Val := New_Val;
+        end if;
+    end func Update
+
+    func Get(MI : Max_Int) -> Univ_Integer is
+        return MI.Val;
+    end func Get;
+
+    func To_String(MI : Max_Int) -> Univ_String is
+        return "" | MI.Val;
+    end func To_String;
+end class Max_Int;
+
+func Divisor(N : Univ_Integer) -> Univ_Integer is
+    var Result : Univ_Integer := 1; //Assume prime until we find a divisor
+    const Sqrt_N := Round_To_Int(Sqrt(Univ_Real::Int_To_Real(N)));
+    for I in 2 .. Sqrt_N concurrent loop
+        if N mod I == 0 then
+            exit loop with Result => I
+        end if;
+    end loop;
+    return Result;
+end func Divisor;
