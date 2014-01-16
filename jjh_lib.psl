@@ -7,6 +7,7 @@ interface Even<> implements Countable<> is
     op "=?"(Even; Even) -> Ordered::Full_Ordering;
     op "from_univ"(Univ_Integer) -> Even is Create;
     func Create(Univ_Integer) -> Even;
+    func Strict_Create(Univ_Integer) -> optional Even;
     func First() -> Even;
     func Last() -> Even;
     func Min(optional Even; optional Even) -> optional Even;
@@ -58,6 +59,14 @@ class Even implements Countable<> is
         end if;
     end func Create;
 
+    func Strict_Create(N : Univ_Integer) -> optional Even is
+        if N mod 2 == 0 then
+            return (Val => N);
+        else
+            return null; //N is odd, Strict Create won't round to nearest even
+        end if;
+    end func Strict_Create;
+
     func First() -> Even is
         return Univ_Integer::First();
     end func First;
@@ -96,6 +105,7 @@ interface Odd<> implements Countable<> is
     op "=?"(Odd; Odd) -> Ordered::Full_Ordering;
     op "from_univ"(Univ_Integer) -> Odd is Create;
     func Create(Univ_Integer) -> Odd;
+    func Strict_Create(Univ_Integer) -> optional Odd;
     func First() -> Odd;
     func Last() -> Odd;
     func Min(optional Odd; optional Odd) -> optional Odd;
@@ -146,6 +156,14 @@ class Odd implements Countable<> is
             return (Val => N - 1); //N is Even, use the Odd number before it
         end if;
     end func Create;
+
+    func Strict_Create(N : Univ_Integer) -> optional Odd is
+        if N mod 2 == 1 then
+            return (Val => N);
+        else
+            return null; //N is even, Strict Create doesn't round
+        end if;
+    end func Strict_Create;
 
     func First() -> Odd is
         return Univ_Integer::First();
