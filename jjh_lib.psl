@@ -1,10 +1,17 @@
+//----------------TODO---------------------
+//  more math ops for Even and Odd
+//-----------------------------------------
+
 //Even numbers
 interface Even<> implements Countable<> is
     op "+"(Even; Univ_Integer) -> Even;
     op "+"(Univ_Integer; Even) -> Even;
     op "-"(Even; Univ_Integer) -> Even;
     op "-"(Even; Even) -> Univ_Integer;
+    op "*"(Even; Even) -> Even;
+    op "*"(Even; Odd) -> Even;
     op "=?"(Even; Even) -> Ordered::Full_Ordering;
+    //op "=?"(Even; Univ_Integer) -> Ordered::Full_Ordering;
     op "from_univ"(Univ_Integer) -> Even is Create;
     func Create(Univ_Integer) -> Even;
     func Strict_Create(Univ_Integer) -> optional Even;
@@ -47,9 +54,21 @@ class Even implements Countable<> is
         return Left.Val - Right.Val;
     end op "-";
 
+    op "*"(Left, Right : Even) -> Even is
+        return Create(Left.Val * Right.Val);
+    end op "*";
+
+    op "*"(Left : Even; Right : Odd) -> Even is
+        return Create(Left.Val * Right.To_Int());
+    end op "*";
+
     op "=?"(Left, Right : Even) -> Ordered::Full_Ordering is
         return Left.Val =? Right.Val;
     end op "=?";
+
+    //op "=?"(Left : Even; Right : Univ_Integer) -> Ordered::Full_Ordering is
+    //    return Left.Val =? Right;
+    //end op "=?";
 
     func Create(N : Univ_Integer) -> Even is
         if N mod 2 == 0 then
@@ -102,7 +121,11 @@ interface Odd<> implements Countable<> is
     op "+"(Univ_Integer; Odd) -> Odd;
     op "-"(Odd; Univ_Integer) -> Odd;
     op "-"(Odd; Odd) -> Univ_Integer;
+    op "*"(Odd; Odd) -> Odd;
+    op "*"(Odd; Even) -> Even;
     op "=?"(Odd; Odd) -> Ordered::Full_Ordering;
+    //op "=?"(Odd; Univ_Integer) -> Ordered::Full_Ordering;
+    op "=?"(Odd; Even) -> Ordered::Full_Ordering;
     op "from_univ"(Univ_Integer) -> Odd is Create;
     func Create(Univ_Integer) -> Odd;
     func Strict_Create(Univ_Integer) -> optional Odd;
@@ -145,9 +168,25 @@ class Odd implements Countable<> is
         return Left.Val - Right.Val;
     end op "-";
 
+    op "*"(Left, Right : Odd) -> Odd is
+        return Create(Left.Val * Right.Val);
+    end op "*";
+
+    op "*"(Left : Odd; Right : Even) -> Even is
+        return Create(Left.Val * Right.To_Int());
+    end op "*";
+
     op "=?"(Left, Right : Odd) -> Ordered::Full_Ordering is
         return Left.Val =? Right.Val;
     end op "=?";
+
+    op "=?"(Left : Odd; Right : Even) -> Ordered::Full_Ordering is
+        return Left.Val =? Right.To_Int();
+    end op "=?";
+
+    //op "=?"(Left : Odd;  Right : Univ_Integer) -> Ordered::Full_Ordering is
+    //    return Left.Val =? Right;
+    //end op "=?";
 
     func Create(N : Univ_Integer) -> Odd is
         if N mod 2 == 1 then
