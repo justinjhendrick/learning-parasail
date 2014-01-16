@@ -1,11 +1,12 @@
+//Even numbers
 interface Even<> implements Countable<> is
     op "+"(Even; Univ_Integer) -> Even;
     op "+"(Univ_Integer; Even) -> Even;
     op "-"(Even; Univ_Integer) -> Even;
     op "-"(Even; Even) -> Univ_Integer;
     op "=?"(Even; Even) -> Ordered::Full_Ordering;
-    op "from_univ"(Univ_Integer) -> optional Even is Create;
-    func Create(Univ_Integer) -> optional Even;
+    op "from_univ"(Univ_Integer) -> Even is Create;
+    func Create(Univ_Integer) -> Even;
     func First() -> Even;
     func Last() -> Even;
     func Min(optional Even; optional Even) -> optional Even;
@@ -49,11 +50,11 @@ class Even implements Countable<> is
         return Left.Val =? Right.Val;
     end op "=?";
 
-    func Create(N : Univ_Integer) -> optional Even is
+    func Create(N : Univ_Integer) -> Even is
         if N mod 2 == 0 then
             return (Val => N);
         else
-            return null
+            return (Val => N - 1); //N is odd, use the even number before it
         end if;
     end func Create;
 
@@ -86,14 +87,15 @@ class Even implements Countable<> is
     end func To_Int;
 end class Even;
 
+//Odd numbers
 interface Odd<> implements Countable<> is
     op "+"(Odd; Univ_Integer) -> Odd;
     op "+"(Univ_Integer; Odd) -> Odd;
     op "-"(Odd; Univ_Integer) -> Odd;
     op "-"(Odd; Odd) -> Univ_Integer;
     op "=?"(Odd; Odd) -> Ordered::Full_Ordering;
-    op "from_univ"(Univ_Integer) -> optional Odd is Create;
-    func Create(Univ_Integer) -> optional Odd;
+    op "from_univ"(Univ_Integer) -> Odd is Create;
+    func Create(Univ_Integer) -> Odd;
     func First() -> Odd;
     func Last() -> Odd;
     func Min(optional Odd; optional Odd) -> optional Odd;
@@ -137,11 +139,11 @@ class Odd implements Countable<> is
         return Left.Val =? Right.Val;
     end op "=?";
 
-    func Create(N : Univ_Integer) -> optional Odd is
+    func Create(N : Univ_Integer) -> Odd is
         if N mod 2 == 1 then
             return (Val => N);
         else
-            return null
+            return (Val => N - 1); //N is Even, use the Odd number before it
         end if;
     end func Create;
 
@@ -182,7 +184,7 @@ concurrent interface Min_Int<> is
     func To_String(Min_Int) -> Univ_String;
 end interface Min_Int;
 
-//Only updates if Parameter is smaller than current value
+//Only updates if parameter is smaller than current value
 concurrent class Min_Int is
     var Val : Univ_Integer;
     exports
@@ -214,7 +216,7 @@ concurrent interface Max_Int<> is
     func To_String(Max_Int) -> Univ_String;
 end interface Max_Int;
 
-//Only updates if Parameter is smaller than current value
+//Only updates if parameter is larger than current value
 concurrent class Max_Int is
     var Val : Univ_Integer;
     exports
@@ -238,9 +240,11 @@ concurrent class Max_Int is
     end func To_String;
 end class Max_Int;
 
+//Returns a divisor of N less than its square root
+//returns 1 if N is prime
 func Divisor(N : Univ_Integer) -> Univ_Integer is
     var Result : Univ_Integer := 1; //Assume prime until we find a divisor
-    const Sqrt_N := Round_To_Int(Sqrt(Univ_Real::Int_To_Real(N)));
+    const Sqrt_N := Round_To_Int(Sqrt(Univ_Real::Int_To_Real(N))) + 1;
     for I in 2 .. Sqrt_N concurrent loop
         if N mod I == 0 then
             exit loop with Result => I
@@ -248,3 +252,49 @@ func Divisor(N : Univ_Integer) -> Univ_Integer is
     end loop;
     return Result;
 end func Divisor;
+
+//Given Primes contains all the prime numbers smaller than N
+//returns #true if N is prime and adds it to prime
+//returns #false otherwise
+func Is_Prime(var Primes : ZVector<Univ_Integer>; N : Univ_Integer) -> Boolean is
+    const Sqrt_N := Round_To_Int(Sqrt(Univ_Real::Int_To_Real(N))) + 1;
+    for each P of Primes concurrent loop
+        if P < Sqrt_N and N mod P == 0 then
+            return #false;
+        end if;
+    end loop;
+    Primes |= N;
+    return #true;
+end func Is_Prime;
+
+//some basic operations on Ints with added locks
+//This is necessary until 'concurrent Univ_Integer' works
+concurrent interface Atomic_Int<> is
+    func Create(Univ_Integer) -> Atomic_Int;
+    func To_String(Atomic_Int) -> Univ_String;
+    op "from_univ"(Univ_Integer) -> Atomic_Int is Create;
+    op "+="(locked var Atomic_Int; Univ_Integer);
+    op "=?"(locked Atomic_Int; Univ_Integer) -> Ordering;
+    //op "=?"(Univ_Integer; locked Atomic_Int) -> Ordering;
+end interface Atomic_Int;
+
+concurrent class Atomic_Int is
+    var Val : Univ_Integer;
+    exports
+
+    func Create(N : Univ_Integer) -> Atomic_Int is
+        return (Val => N);
+    end func Create;
+
+    func To_String(AI : Atomic_Int) -> Univ_String is
+        return "" | AI.Val;
+    end func To_String;
+
+    op "+="(locked var AI : Atomic_Int; N : Univ_Integer) is
+        AI.Val += N;
+    end op "+=";
+
+    op "=?"(locked AI : Atomic_Int; N : Univ_Integer) -> Ordering is
+        return AI.Val =? N;
+    end op "=?";
+end class Atomic_Int;
