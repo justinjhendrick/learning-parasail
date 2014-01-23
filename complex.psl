@@ -1,3 +1,10 @@
+//requires jjh_lib.psl
+
+//----------------TODO----------------
+//  Test
+//  from_univ (maybe)
+//------------------------------------
+
 interface Complex<> is
     //operators
     op "+"(Complex; Complex) -> Complex; //Addition with Reals and other Complexes
@@ -15,7 +22,8 @@ interface Complex<> is
     op "*"(Complex; Univ_Integer) -> Complex;
     op "*"(Univ_Real; Complex) -> Complex;
     op "*"(Univ_Integer; Complex) -> Complex;
-    op "**"(Complex; Univ_Integer) {Exp >= 0} -> Complex; //Integer exponentiation
+    op "**"(Complex; Univ_Integer) -> Complex; //Integer exponentiation
+    op "magnitude"(Complex) -> Univ_Real;
 
     //Constructors
     func Create(Univ_Real; Univ_Real) -> Complex;       //Return a Complex Number with
@@ -27,14 +35,10 @@ interface Complex<> is
     func Is_Real(Complex) -> Boolean; //Return "Imaginary part is Zero"
     func Re(Complex) -> Univ_Real; //Return Real Part
     func Im(Complex) -> Univ_Real; //Return Imaginary Part
+    func Theta(Complex) -> optional Univ_Real; //Return angle from real axis in radians
     func To_String(Complex) -> Univ_String; //returns a string with
     //real_part '+' or '-' imaginary_part 'i'
 end interface Complex;
-
-//----------------TODO----------------
-//  Test
-//  from_univ (maybe)
-//------------------------------------
 
 class Complex<> is
         //Immutable Complex Number with Real Part and Imaginary Part represented by
@@ -114,6 +118,10 @@ class Complex<> is
             return Base * Base ** (Exp - 1);
         end op "**";
 
+        op "magnitude"(C : Complex) -> Univ_Real is
+            return Sqrt(C.R ** 2 + C.I ** 2);
+        end op "magnitude";
+
         func Create(Real : Univ_Real; Imaginary : Univ_Real) -> Complex is
             return (R => Real, I => Imaginary);
         end func Create;
@@ -131,7 +139,7 @@ class Complex<> is
         end func Create;
 
         func Is_Real(C : Complex) -> Boolean is
-            return C.I < 0.000001 and C.I > -0.000001;
+            return C.I in -0.000001 .. 0.000001;
         end func Is_Real;
 
         func Re(C : Complex) -> Univ_Real is
@@ -141,6 +149,10 @@ class Complex<> is
         func Im(C : Complex) -> Univ_Real is
             return C.I;
         end func Im;
+
+        func Theta(C : Complex) -> optional Univ_Real is
+            return Atan2(C.I, C.R);
+        end func Theta;
 
         func To_String(C : Complex) -> Result : Univ_String is
             Result := C.R.To_String();
