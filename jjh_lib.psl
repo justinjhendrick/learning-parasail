@@ -356,44 +356,64 @@ concurrent class Atomic_Int is
     end op "=?";
 end class Atomic_Int;
 
+//func Lookup_Atan(X : Univ_Real) 
+//        {X in 0.75 ..< 1.0 or X in -1.0 <.. -0.75} -> X : Univ_Real is
+//    var Sign := 1;
+//    var X_Pos := X;
+//    if X < 0.0 then
+//        Sign := -1;
+//        X_Pos := -X;
+//    end if;
+//    type Two_After is Fixed<Delta => 0.01>;
+//    type Table is Array<Univ_Real, Two_After>;
+//    var Vals : Table := Create(0.75 ..< 0.77, 0.0);
+//    Vals := [1.0, 1.0];
+//    const Result := 1.0;
+//    return Sign * Result;
+//end func Lookup_Atan;
 
 //Use taylor expansion at zero when possible (correct on -1 .. 1)
 //and reduce to -1 .. 1 otherwise
 func Atan(X : Univ_Real) -> Univ_Real is
     //We want to reduce this problem to -1.0 .. 1.0
     //use relationship atan(1/abs X) == pi / 2 - atan(abs X)
-    //and atan(-x) == -atan(x)
+    //and atan(-x) == -atan(x). atan is an odd function
     //to reduce problem into -1.0 .. 1.0 range
+    const Half_Pi := 1.5707963267949;
     if X > 1.0 then 
-        return 1.570796326 - Atan(1.0 / X); //if X > 0 then (1 / X) < 1
+        return Half_Pi - Atan(1.0 / X); //if X > 0 then (1 / X) < 1
     elsif X < -1.0 then
-        return -1.570796326 - Atan(1.0 / X);
+        return -Half_Pi - Atan(1.0 / X);
+    //elsif X >= 0.75 or X <= -0.75 then
+    //    return Lookup_Atan(X);
     else
         return X - (X ** 3) / 3.0 + (X ** 5) / 5.0 - (X ** 7) / 7.0 +
-               (X ** 9) / 9.0 - (X ** 11) / 11.0;
+               (X ** 9) / 9.0 - (X ** 11) / 11.0;// + (X ** 13) / 13;
     end if;
 end func Atan;
 
 func Test_Atan() is
-    for X := -100.0 then X + 0.5 while X <= 100.0 loop
+    for X := -1.5 then X + 0.01 while X <= 1.5 loop
         Println(X | ", " | Atan(X));
     end loop;
 end func Test_Atan;
 
 func Atan2(Y, X : Univ_Real) -> optional Univ_Real is
+    const Pi := 3.1415926535898;
+    const Half_Pi := 1.5707963267949;
     if X > 0.0 then
         return Atan(Y / X);
     elsif X < 0.0 then
         if Y >= 0.0 then
-            return Atan(Y / X) + 3.14159265;
+            return Atan(Y / X) + Pi;
         elsif Y < 0.0 then
-            return Atan(Y / X) - 3.14159265;
+            return Atan(Y / X) - Pi;
         end if;
     else //X == 0
         if Y > 0.0 then
-            return 1.570796326; //pi / 2
+            return Half_Pi;
         elsif Y < 0.0 then
-            return -1.570796326; //-pi / 2
+            return -Half_Pi;
         else //Y == 0
             return null;
         end if;
@@ -401,8 +421,8 @@ func Atan2(Y, X : Univ_Real) -> optional Univ_Real is
 end func Atan2;
 
 func Test_Atan2() is
-    for Y := -1.0 then Y + 0.5 while Y <= 1.0 loop
-        for X := -1.0 then X + 0.5 while X <= 1.0 loop
+    for Y := -5.0 then Y + 0.5 while Y <= 5.0 loop
+        for X := -5.0 then X + 0.5 while X <= 5.0 loop
             Println("Atan2(" | Y | ", " | X | ") \t= " | Atan2(Y, X));
         end loop;
     end loop;
