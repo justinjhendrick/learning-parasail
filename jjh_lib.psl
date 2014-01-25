@@ -356,24 +356,36 @@ concurrent class Atomic_Int is
     end op "=?";
 end class Atomic_Int;
 
-//func Lookup_Atan(X : Univ_Real) 
-//        {X in 0.75 ..< 1.0 or X in -1.0 <.. -0.75} -> X : Univ_Real is
-//    var Sign := 1;
-//    var X_Pos := X;
-//    if X < 0.0 then
-//        Sign := -1;
-//        X_Pos := -X;
-//    end if;
-//    type Two_After is Fixed<Delta => 0.01>;
-//    type Table is Array<Univ_Real, Two_After>;
-//    var Vals : Table := Create(0.75 ..< 0.77, 0.0);
-//    Vals := [1.0, 1.0];
-//    const Result := 1.0;
-//    return Sign * Result;
-//end func Lookup_Atan;
+func Linear_Interpolate(Vals : Map<Univ_Real, Univ_Real>; X, Low, High : Univ_Real)
+        -> Univ_Real is
+    return Vals[Low] + (Vals[High] - Vals[Low]) * (X - Low) / (High - Low);
+end func Linear_Interpolate;
+
+func Lookup_Atan(X : Univ_Real) 
+        {X in 0.7 .. 1.0 or X in -1.0 .. -0.7} -> Univ_Real is
+    var Sign := 1;
+    var X_Pos := X;
+    if X < 0.0 then
+        Sign := -1;
+        X_Pos := -X;
+    end if;
+    var Arctan : Map<Univ_Real, Univ_Real> := [];
+    Arctan[0.7] := 0.61072596438921; Arctan[0.8] := 0.67474094222355;
+    Arctan[0.9] := 0.73281510178650; Arctan[1.0] := 0.78539816339745;
+    var Result : Univ_Real;
+    if X_Pos in 0.7 ..< 0.8 then
+        Result := Linear_Interpolate(Arctan, X_Pos, 0.7, 0.8);
+    elsif X_Pos in 0.8 ..< 0.9 then
+        Result := Linear_Interpolate(Arctan, X_Pos, 0.8, 0.9);
+    else //must be in 0.9 .. 1.0
+        Result := Linear_Interpolate(Arctan, X_Pos, 0.9, 1.0);
+    end if;
+    return Sign * Result;
+end func Lookup_Atan;
 
 //Use taylor expansion at zero when possible (correct on -1 .. 1)
 //and reduce to -1 .. 1 otherwise
+//Accurate to ±7e-4
 func Atan(X : Univ_Real) -> Univ_Real is
     //We want to reduce this problem to -1.0 .. 1.0
     //use relationship atan(1/abs X) == pi / 2 - atan(abs X)
@@ -384,11 +396,11 @@ func Atan(X : Univ_Real) -> Univ_Real is
         return Half_Pi - Atan(1.0 / X); //if X > 0 then (1 / X) < 1
     elsif X < -1.0 then
         return -Half_Pi - Atan(1.0 / X);
-    //elsif X >= 0.75 or X <= -0.75 then
-    //    return Lookup_Atan(X);
+    elsif X >= 0.7 or X <= -0.7 then
+        return Lookup_Atan(X);
     else
         return X - (X ** 3) / 3.0 + (X ** 5) / 5.0 - (X ** 7) / 7.0 +
-               (X ** 9) / 9.0 - (X ** 11) / 11.0;// + (X ** 13) / 13;
+               (X ** 9) / 9.0 - (X ** 11) / 11.0;
     end if;
 end func Atan;
 
