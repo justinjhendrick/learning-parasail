@@ -8,22 +8,33 @@
 interface Complex<> is
     //operators
     op "+"(Complex; Complex) -> Complex; //Addition with Reals and other Complexes
+    op "+="(var Complex; Complex);
     op "+"(Complex; Univ_Real) -> Complex;
+    op "+="(var Complex; Univ_Real);
     op "+"(Complex; Univ_Integer) -> Complex;
+    op "+="(var Complex; Univ_Integer);
     op "+"(Univ_Real; Complex) -> Complex;
     op "+"(Univ_Integer; Complex) -> Complex;
     op "-"(Complex) -> Complex;          //Subtraction with Reals and other Complexes
     op "-"(Complex; Complex) -> Complex;
+    op "-="(var Complex; Complex);
     op "-"(Complex; Univ_Real) -> Complex;
+    op "-="(var Complex; Univ_Real);
     op "-"(Complex; Univ_Integer) -> Complex;
+    op "-="(var Complex; Univ_Integer);
     op "-"(Univ_Real; Complex) -> Complex;
     op "*"(Complex; Complex) -> Complex; //Multiplication with Reals and other Complexes
+    op "*="(var Complex; Complex);
     op "*"(Complex; Univ_Real) -> Complex;
+    op "*="(var Complex; Univ_Real);
     op "*"(Complex; Univ_Integer) -> Complex;
+    op "*="(var Complex; Univ_Integer);
     op "*"(Univ_Real; Complex) -> Complex;
     op "*"(Univ_Integer; Complex) -> Complex;
     op "**"(Complex; Univ_Integer) -> Complex; //Integer exponentiation
+    op "**="(var Complex; Univ_Integer);
     op "magnitude"(Complex) -> Univ_Real;
+    op "=?"(Complex; Complex) -> Ordering;
 
     //Constructors
     func Create(Univ_Real; Univ_Real) -> Complex;       //Return a Complex Number with
@@ -35,7 +46,7 @@ interface Complex<> is
     func Is_Real(Complex) -> Boolean; //Return "Imaginary part is Zero"
     func Re(Complex) -> Univ_Real; //Return Real Part
     func Im(Complex) -> Univ_Real; //Return Imaginary Part
-    func Theta(Complex) -> optional Univ_Real; //Return angle from real axis in radians
+    func Phase(Complex) -> optional Univ_Real; //Return angle from real axis in radians
     func To_String(Complex) -> Univ_String; //returns a string with
     //real_part '+' or '-' imaginary_part 'i'
 end interface Complex;
@@ -50,13 +61,25 @@ class Complex<> is
             return (R => Left.R + Right.R, I => Left.I + Right.I);
         end op "+";
 
+        op "+="(var Left : Complex; Right : Complex) is
+            Left := Left + Right;
+        end op "+=";
+
         op "+"(Left : Complex; Right : Univ_Real) -> Complex is
             return (R => Left.R + Right, I => Left.I);
         end op "+";
 
+        op "+="(var Left : Complex; Right : Univ_Real) is
+            Left := Left + Right;
+        end op "+=";
+
         op "+"(Left : Complex; Right : Univ_Integer) -> Complex is
             return (R => Left.R + Int_To_Real(Right), I => Left.I);
         end op "+";
+
+        op "+="(var Left : Complex; Right : Univ_Integer) is
+            Left := Left + Right;
+        end op "+=";
 
         op "+"(Left : Univ_Real; Right : Complex) -> Complex is
             return Right + Left;
@@ -74,13 +97,25 @@ class Complex<> is
             return (R => Left.R - Right.R, I => Left.I - Right.I);
         end op "-";
 
+        op "-="(var Left : Complex; Right : Complex) is
+            Left := Left - Right;
+        end op "-=";
+
         op "-"(Left : Complex; Right : Univ_Real) -> Complex is
             return (R => Left.R - Right, I => Left.I);
         end op "-";
 
+        op "-="(var Left : Complex; Right : Univ_Real) is
+            Left := Left - Right;
+        end op "-=";
+
         op "-"(Left : Complex; Right : Univ_Integer) -> Complex is
             return (R => Left.R - Int_To_Real(Right), I => Left.I);
         end op "-";
+
+        op "-="(var Left : Complex; Right : Univ_Integer) is
+            Left := Left - Right;
+        end op "-=";
 
         op "-"(Left : Univ_Real; Right : Complex) -> Complex is
             return Left + (-Right);
@@ -91,13 +126,25 @@ class Complex<> is
                     I => Left.R * Right.I + Left.I * Right.R);
         end op "*";
 
+        op "*="(var Left : Complex; Right : Complex) is
+            Left := Left * Right
+        end op "*=";
+
         op "*"(Left : Complex; Right : Univ_Real) -> Complex is
             return (R => Left.R * Right, I => Left.I * Right);
         end op "*";
 
+        op "*="(var Left : Complex; Right : Univ_Real) is
+            Left := Left * Right;
+        end op "*=";
+
         op "*"(Left : Complex; Right : Univ_Integer) -> Complex is
             return (R => Left.R * Int_To_Real(Right), I => Left.I * Int_To_Real(Right));
         end op "*";
+
+        op "*="(var Left : Complex; Right : Univ_Integer) is
+            Left := Left * Right;
+        end op "*=";
 
         op "*"(Left : Univ_Real; Right : Complex) -> Complex is
             return Right * Left;
@@ -118,9 +165,18 @@ class Complex<> is
             return Base * Base ** (Exp - 1);
         end op "**";
 
+        op "**="(var Base : Complex; Exp : Univ_Integer) {Exp >= 0} is
+            Base := Base ** Exp;
+        end op "**="
+
         op "magnitude"(C : Complex) -> Univ_Real is
             return Sqrt(C.R ** 2 + C.I ** 2);
         end op "magnitude";
+
+        op "=?"(Left : Complex; Right : Complex) -> Ordering is
+            //Just compare magnitudes.
+            return |Left| =? |Right|;
+        end op "=?"
 
         func Create(Real : Univ_Real; Imaginary : Univ_Real) -> Complex is
             return (R => Real, I => Imaginary);
@@ -150,9 +206,9 @@ class Complex<> is
             return C.I;
         end func Im;
 
-        func Theta(C : Complex) -> optional Univ_Real is
+        func Phase(C : Complex) -> optional Univ_Real is
             return Atan2(C.I, C.R);
-        end func Theta;
+        end func Phase;
 
         func To_String(C : Complex) -> Result : Univ_String is
             Result := C.R.To_String();
@@ -183,4 +239,6 @@ func Test() is
     Println(To_String(a * one));
     Println(To_String(a + i));
     Println(To_String(a * i));
+    Println("--------------------------------");
+    Println("" | |a|);
 end func Test;
