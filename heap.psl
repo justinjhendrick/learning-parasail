@@ -1,263 +1,315 @@
 interface Heapable<> is
-    type Full_Ordering is Ordering {Full_Ordering in [#less, #equal, #greater]}
-    op "=?"(Left, Right : Heapable) -> Full_Ordering
-    func To_String(Val : Heapable) -> Univ_String
-    //Also assignable, but everything is Assignable<>
+  type Full_Ordering is Ordering {Full_Ordering in [#less, #equal, #greater]}
+  op "=?"(Left, Right : Heapable) -> Full_Ordering
+  func To_String(Val : Heapable) -> Univ_String
+  //Also assignable, but everything is Assignable<>
 end interface Heapable;
 
-//--------TODO---------------------------------------------------------------------
+//--------TODO--------------------------------------------------------
 //  Wait for ability to return multiple things
-//---------------------------------------------------------------------------------
-concurrent interface Heap<E is Heapable<>> is
-    //log(n) insertion and removal heap implemented on ZVector
-    //Left child is located at 2 * n + 1
-    //Right child is located at 2 * n + 2 where n is the index of the current node
-    //Parent is located at (n - 1) / 2
-    //This allows the tree to be represented as an array
-    op "[]"() -> Heap;
-        //create empty Heap
-    op "|="(locked var H : Heap; Elem : E) {Length(H') == Length(H) + 1};
-        //adds element to heap
-    op "magnitude"(H : Heap) -> Univ_Integer is Length;
-    func Create(P : Polarity) -> Heap;
-        //creates a new empty heap with the given polarity
-    func Length(H : Heap) -> Univ_Integer;
-        //returns number of elements
-    func Pop(locked var H : Heap) -> optional E {Length(H') <= Length(H)};
-        //pops highest priority from heap
-        //return null if H is empty
-    func To_String(locked H : Heap) -> Univ_String<>;
-        //returns a string representation of the heap
-    func To_String_Tree(locked H : Heap) -> Univ_String<>;
-        //returns the elements organized into a tree in a String
+//--------------------------------------------------------------------
+
+// log(n) insertion and removal heap implemented on ZVector
+// Left child is located at 2 * n + 1
+// Right child is located at 2 * n + 2 where n is the index of the current node
+// Parent is located at (n - 1) / 2
+// This allows the tree to be represented as an array
+
+concurrent interface Heap<E is Heapable<>; Pole : Unique_Name::Polarity := #less> is
+  op "[]"() -> Heap;
+    //create empty Heap
+  op "|="(locked var H : Heap; Elem : E) {Length(H') == Length(H) + 1};
+    //adds element to heap
+
+  op "|"(Left, Right : E) -> Heap;
+  op "|"(Left : Heap; Right : E) -> Heap;
+  op "|"(Left : E; Right : Heap) -> Heap;
+  op "|"(Left : Heap; Right : Heap) -> Heap;
+
+  op "magnitude"(H : Heap) -> Univ_Integer is Length;
+
+  func Copy(locked H : Heap) -> Heap;
+  func Create() -> Heap;
+    //creates a new empty heap with the given polarity
+  func Length(H : Heap) -> Univ_Integer;
+    //returns number of elements
+  func Pop(locked var H : Heap) -> optional E {Length(H') <= Length(H)};
+    //pops highest priority from heap
+    //return null if H is empty
+  func To_String(locked H : Heap) -> Univ_String<>;
+    //returns a string representation of the heap
+  func To_String_Tree(locked H : Heap) -> Univ_String<>;
+    //returns the elements organized into a tree in a String
 end interface Heap;
 
-concurrent class Heap is
-        type Int_ZVector is ZVector<Univ_Integer>; //ZVector of Integers
-        //Array of strings indexed by Integers
-        type Str_Array is Array<Univ_String, Univ_Integer>;
-        var Data : ZVector<E>; //Data storage for Heap
-        var Size : Univ_Integer; //Number of non-null elements in Data
-        type Polarity is Ordering {Polarity in [#less, #greater]}; //Polarity type
-        //#less will pop smallest first, #greater will pop largest first
-        const Pole : Polarity; //Polarity of this heap
+concurrent class Heap<E is Heapable<>; Pole : Polarity := #less> is
+    type Int_ZVector is ZVector<Univ_Integer>; //ZVector of Integers
+    //Array of strings indexed by Integers
+    type Str_Array is Array<Univ_String, Univ_Integer>;
+    var Data : ZVector<E>; //Data storage for Heap
+    var Size : Univ_Integer; //Number of non-null elements in Data
+    //type Polarity is Ordering {Polarity in [#less, #greater]}; //Polarity type
+    //#less will pop smallest first, #greater will pop largest first
+    //const Pole : Polarity; //Polarity of this heap
 
-        //Preserve Heap Order (Parent relation to both children must match Pole)
-        //Start at bottom and recurse up the tree
-        func Preserve_Order_Up(locked var H : Heap; N : Integer) is
-            if N == 0 then
-                return;
-            end if;
-            const Parent_Index := (N - 1) / 2;
-            const Child_Parent : Ordering := H.Data[N] =? H.Data[Parent_Index];
-            if Child_Parent == H.Pole then
-                H.Data[N] <=> H.Data[Parent_Index]
-                Preserve_Order_Up(H, Parent_Index)
-            end if;
-        end func Preserve_Order_Up;
+    //Preserve Heap Order (Parent relation to both children must match Pole)
+    //Start at bottom and recurse up the tree
+    func Preserve_Order_Up(locked var H : Heap; N : Integer) is
+      if N == 0 then
+        return;
+      end if;
+      const Parent_Index := (N - 1) / 2;
+      const Child_Parent : Ordering := H.Data[N] =? H.Data[Parent_Index];
+      if Child_Parent == Pole then
+        H.Data[N] <=> H.Data[Parent_Index]
+        Preserve_Order_Up(H, Parent_Index)
+      end if;
+    end func Preserve_Order_Up;
 
-        //Recurses down the tree. Swaps nodes if necessary to preserve heap order
-        func Preserve_Order_Down(locked var H : Heap; N : Univ_Integer) is
-            const L := 2 * N + 1;
-            if L >= H.Size then //If we have no left child, then we have no children
-                return;         //and there's nothing to check
-            end if;
-            const R := 2 * N + 2;
-            const Has_Right : Boolean := R < H.Size; //Check for right child
-            const Left_To_Parent : Ordering := H.Data[L] =? H.Data[N];
-            var Right_To_Parent : Ordering;
-            if Has_Right then
-                Right_To_Parent := H.Data[R] =? H.Data[N];
-            end if;
-            //"and then" used in this if statement (short-circuit boolean operator)
-            //so that we won't use Right_To_Parent if it's null
-            if Left_To_Parent == H.Pole or
-                    (Has_Right and then Right_To_Parent == H.Pole) then
-                if Has_Right then //One or both children out of order
-                    const Left_To_Right := H.Data[L] =? H.Data[R];
-                    const Right_To_Left := H.Data[R] =? H.Data[L];
-                    //swap with the higher priority (lesser if Pole == #less
-                    //greater if Pole == #greater)
-                    if Left_To_Right == H.Pole then
-                        H.Data[N] <=> H.Data[L];
-                        Preserve_Order_Down(H, L); //Recurse down left subtree
-                    elsif Right_To_Left == H.Pole then
-                        H.Data[N] <=> H.Data[R];
-                        Preserve_Order_Down(H, R); //Recurse down right subtree
-                    elsif Right_To_Left == #equal then //Left_To_Right also #equal
-                        //Arbitrarily choose right side
-                        H.Data[N] <=> H.Data[R];
-                        Preserve_Order_Down(H, R); //Recurse down right subtree
-                    end if;
-                else //Something is out of order and there is no right child
-                    //It must be the left child then
-                    H.Data[N] <=> H.Data[L];
-                    //No need to recurse because
-                    //Rows are filled to completion before next row
-                end if;
-            end if;
-        end func Preserve_Order_Down;
+    //Recurses down the tree. Swaps nodes if necessary to preserve heap order
+    func Preserve_Order_Down(locked var H : Heap; N : Univ_Integer) is
+      const L := 2 * N + 1;
+      if L >= H.Size then //If we have no left child, then we have no children
+        return;     //and there's nothing to check
+      end if;
+      const R := 2 * N + 2;
+      const Has_Right : Boolean := R < H.Size; //Check for right child
+      const Left_To_Parent : Ordering := H.Data[L] =? H.Data[N];
+      var Right_To_Parent : Ordering;
+      if Has_Right then
+        Right_To_Parent := H.Data[R] =? H.Data[N];
+      end if;
+      //"and then" used in this if statement (short-circuit boolean operator)
+      //so that we won't use Right_To_Parent if it's null
+      if Left_To_Parent == Pole or
+          (Has_Right and then Right_To_Parent == Pole) then
+        if Has_Right then //One or both children out of order
+          const Left_To_Right := H.Data[L] =? H.Data[R];
+          const Right_To_Left := H.Data[R] =? H.Data[L];
+          //swap with the higher priority (lesser if Pole == #less
+          //greater if Pole == #greater)
+          if Left_To_Right == Pole then
+            H.Data[N] <=> H.Data[L];
+            Preserve_Order_Down(H, L); //Recurse down left subtree
+          elsif Right_To_Left == Pole then
+            H.Data[N] <=> H.Data[R];
+            Preserve_Order_Down(H, R); //Recurse down right subtree
+          elsif Right_To_Left == #equal then //Left_To_Right also #equal
+            //Arbitrarily choose right side
+            H.Data[N] <=> H.Data[R];
+            Preserve_Order_Down(H, R); //Recurse down right subtree
+          end if;
+        else //Something is out of order and there is no right child
+          //It must be the left child then
+          H.Data[N] <=> H.Data[L];
+          //No need to recurse because
+          //Rows are filled to completion before next row
+        end if;
+      end if;
+    end func Preserve_Order_Down;
 
-        //divide and conquer recursion for To_String
-        func To_String_Helper(locked H : Heap; Low, High : Univ_Integer) -> Univ_String is
-            const Len := High - Low;
-            if Len == 0 then
-                return ""; //Nothing here
-            elsif Len == 1 then
-                return H.Data[Low].To_String(); //Only one thing, return its To_String
-            end if;
-            //Split in half and make recursive call with a comma in the middle
-            const Half := Low + Len / 2;
-            return H.To_String_Helper(Low, Half) | ", " | H.To_String_Helper(Half, High);
-        end func To_String_Helper;
+    //divide and conquer recursion for To_String
+    func To_String_Helper(locked H : Heap; Low, High : Univ_Integer) -> Univ_String is
+      const Len := High - Low;
+      if Len == 0 then
+        return ""; //Nothing here
+      elsif Len == 1 then
+        return H.Data[Low].To_String(); //Only one thing, return its To_String
+      end if;
+      //Split in half and make recursive call with a comma in the middle
+      const Half := Low + Len / 2;
+      return H.To_String_Helper(Low, Half) | ", " | H.To_String_Helper(Half, High);
+    end func To_String_Helper;
 
 
-        //TODO: wait for ability to return multiple things
-        //instead of passing widths as a var parameter
-        //Returns the Height of the tree and updates a vector of tree widths
-        //for use by To_String_Tree
-        func Tree_Height(var Widths : Int_ZVector) -> Univ_Integer is
-            var Width := 1;
-            var Height := 0;
-            var Col := 0;
-            for I in 0 ..< Widths.Length() forward loop
-                Widths[I] := Width;
-                Col += 1;
-                if Col == 1 then //At least one element on this row, Height increases
-                    Height += 1;
-                end if;
-                if Col == Width then
-                    Width *= 2; //Width doubles at each level of the tree
-                    Col := 0;
-                end if;
-            end loop
-            return Height;
-        end func Tree_Height;
+    //TODO: wait for ability to return multiple things
+    //instead of passing widths as a var parameter
+    //Returns the Height of the tree and updates a vector of tree widths
+    //for use by To_String_Tree
+    func Tree_Height(var Widths : Int_ZVector) -> Univ_Integer is
+      var Width := 1;
+      var Height := 0;
+      var Col := 0;
+      for I in 0 ..< Widths.Length() forward loop
+        Widths[I] := Width;
+        Col += 1;
+        if Col == 1 then //At least one element on this row, Height increases
+          Height += 1;
+        end if;
+        if Col == Width then
+          Width *= 2; //Width doubles at each level of the tree
+          Col := 0;
+        end if;
+      end loop
+      return Height;
+    end func Tree_Height;
 
-        //TODO: wait for ability to return multiple things
-        //Return size of largest element To_String and update Strings array with
-        //either spaces added if smaller than largest or 
-        //trimmed if larger than imposed max size
-        //for use by To_String_Tree
-        func To_Strings_Elem_Size(locked H : Heap; var Strings : Str_Array) -> Univ_Integer is
-            //Find max element size
-            var Max_Elem_Size := 0;
-            for I in 0 ..< Strings.Length() forward loop
-                const Size := H.Data[I].To_String().Length();
-                if Size > Max_Elem_Size then
-                    Max_Elem_Size := Size;
-                end if;
-            end loop;
-            const Imposed_Max := 5
-            //Tree To_String grows in width very quickly, trim the To_Strings to make
-            //the size manigable
-            if Max_Elem_Size > Imposed_Max then
-                Max_Elem_Size := Imposed_Max;
-            end if;
-            for I in 0 ..< Strings.Length() concurrent loop
-                const Str := H.Data[I].To_String();
-                if Str.Length() <= Max_Elem_Size then
-                    //Add blanks to beginning
-                    Strings[I] := (" " * (Max_Elem_Size - Str.Length())) | Str;
-                elsif Str.Length() > Max_Elem_Size then
-                    //only use beginning up to max
-                    Strings[I] := Str[1 .. Max_Elem_Size - 1] | "…";
-                end if
-            end loop;
-            return Max_Elem_Size;
-        end func To_Strings_Elem_Size;
+    //TODO: wait for ability to return multiple things
+    //Return size of largest element To_String and update Strings array with
+    //either spaces added if smaller than largest or 
+    //trimmed if larger than imposed max size
+    //for use by To_String_Tree
+    func To_Strings_Elem_Size(locked H : Heap; var Strings : Str_Array)
+      -> Univ_Integer is
+      //Find max element size
+      var Max_Elem_Size := 0;
+      for I in 0 ..< Strings.Length() forward loop
+        const Size := H.Data[I].To_String().Length();
+        if Size > Max_Elem_Size then
+          Max_Elem_Size := Size;
+        end if;
+      end loop;
+      const Imposed_Max := 5
+      //Tree To_String grows in width very quickly, trim the To_Strings to make
+      //the size manigable
+      if Max_Elem_Size > Imposed_Max then
+        Max_Elem_Size := Imposed_Max;
+      end if;
+      for I in 0 ..< Strings.Length() concurrent loop
+        const Str := H.Data[I].To_String();
+        if Str.Length() <= Max_Elem_Size then
+          //Add blanks to beginning
+          Strings[I] := (" " * (Max_Elem_Size - Str.Length())) | Str;
+        elsif Str.Length() > Max_Elem_Size then
+          //only use beginning up to max
+          Strings[I] := Str[1 .. Max_Elem_Size - 1] | "…";
+        end if
+      end loop;
+      return Max_Elem_Size;
+    end func To_Strings_Elem_Size;
 
-    exports
-        op "[]"() -> Heap is
-            return (Data => [], Size => 0, Pole => #less); //minHeap is default
-        end op "[]";
+    // Move all elements from smaller into larger
+    func Move(var Smaller : Heap; var Larger : Heap) -> Heap is
+      for i in 0 ..< Length(Smaller) concurrent loop
+        Larger |= Smaller.Pop();
+      end loop;
+      return Larger;
+    end func Move;
 
-        op "|="(locked var H : Heap; Elem : E) {Length(H') == Length(H) + 1} is
-            if H.Data.Length() == H.Size then //no nulls, concatenate onto end
-                H.Data |= Elem;
-            else //there are some nulls at the end, replace the first one
-                H.Data[H.Size] := Elem;
-            end if;
-            H.Size += 1;
-            Preserve_Order_Up(H, H.Size - 1); //Traverse up the tree Preserving heap order
-        end op "|=";
+  exports
+    op "[]"() -> Heap is
+      return (Data => [], Size => 0);
+    end op "[]";
 
-        func Create(P : Polarity) -> Heap is
-            return (Data => [], Size => 0, Pole => P); //Create empty heap with given Pole
-        end func Create;
+    op "|="(locked var H : Heap; Elem : E) {Length(H') == Length(H) + 1} is
+      if H.Data.Length() == H.Size then //no nulls, concatenate onto end
+        H.Data |= Elem;
+      else //there are some nulls at the end, replace the first one
+        H.Data[H.Size] := Elem;
+      end if;
+      H.Size += 1;
+      //Traverse up the tree Preserving heap order
+      Preserve_Order_Up(H, H.Size - 1);
+    end op "|=";
 
-        func Length(H : Heap) -> Univ_Integer is
-            return H.Size;
-        end func Length;
+    func Create() -> Heap is
+      return (Data => [], Size => 0);
+    end func Create;
 
-        func Pop(locked var H : Heap) -> optional E {Length(H') <= Length(H)} is
-            if H.Size == 0 then
-                return null;
-            end if;
-            H.Data[0] <=> H.Data[H.Size - 1];
-            const To_Return <== H.Data[H.Size - 1];
-            H.Size -= 1;
-            Preserve_Order_Down(H, 0);
-            return To_Return;
-        end func Pop;
+    op "|"(Left, Right : E) -> Heap is
+      var Result := Create();
+      Result |= Left;
+      Result |= Right;
+      return Result;
+    end op "|";
+    op "|"(Left : Heap; Right : E) -> Heap is
+      var Result := Copy(Left);
+      Result |= Right;
+      return Result;
+    op "|"(Left : E; Right : Heap) -> Heap is 
+      return Right | Left 
+    end op "|";
+    op "|"(Left : Heap; Right : Heap) -> Heap is
+      if Length(Left) < Length(Right) then
+        var Smaller := Copy(Left);
+        var Larger := Copy(Right);
+        return Move(Smaller, Larger);
+      else
+        var Smaller := Copy(Right);
+        var Larger := Copy(Left);
+        return Move(Smaller, Larger);
+      end if;
+    end op "|";
 
-        func To_String(locked H : Heap) -> Univ_String<> is
-            return "[" | H.To_String_Helper(0, H.Size) | "]";
-        end func To_String;
+    func Copy(locked H : Heap) -> Heap is
+      return (Data => H.Data[0 ..< Length(H.Data)], Size => H.Size);
+    end func Copy;
 
-        //Fancy tree representation of Heap
-        func To_String_Tree(locked H : Heap) -> Univ_String is
-            //const H_Copy : Heap := H;
-            var Strings : Str_Array := Str_Array::Create(0 ..< H.Size, "");
-            const Elem_Size : Univ_Integer := H.To_Strings_Elem_Size(Strings);
-            var Widths : Int_ZVector := Int_ZVector::Create(H.Size, 0);
-            const Height := Tree_Height(Widths);
-            var Col := 0;
-            var Row := 0;
-            var Result : Univ_String := "";
-            //? operator used to ensure 2**negative doesn't happen
-            //Number of blanks to the left of the root
-            const Root_Left_Blanks := Height - Row >= 1 ? Elem_Size * (2**(Height - Row - 1) - 1) : 0;
-            //Useful to know that "string" * negative returns ""
-            Result |= " " * Root_Left_Blanks;
-            for I in 0 ..< H.Size forward loop
-                Col += 1;
-                if Col == 1 then
-                    Row += 1;
-                end if;
-                Result |= Strings[I];
-                if Col == Widths[I] then
-                    Result |= "\n";
-                    //Number of blanks to the left of first element on this row
-                    const Left_Blanks := Height - Row >= 1 ? Elem_Size * (2**(Height - Row - 1) - 1) : 0;
-                    Result |= " " * Left_Blanks;
-                    Col := 0;
-                else
-                    //Number of blanks between elements of the same row
-                    const Inter_Blanks := Height - Row >= 0 ? Elem_Size * (2 * 2**(Height - Row) - 1) : 0;
-                    Result |= " " * Inter_Blanks;
-                end if;
-            end loop
-            return Result;
-        end func To_String_Tree;
+    func Length(H : Heap) -> Univ_Integer is
+      return H.Size;
+    end func Length;
+
+    func Pop(locked var H : Heap) -> optional E {Length(H') <= Length(H)} is
+      if H.Size == 0 then
+        return null;
+      end if;
+      H.Data[0] <=> H.Data[H.Size - 1];
+      const To_Return <== H.Data[H.Size - 1];
+      H.Size -= 1;
+      Preserve_Order_Down(H, 0);
+      return To_Return;
+    end func Pop;
+
+    func To_String(locked H : Heap) -> Univ_String<> is
+      return "[" | H.To_String_Helper(0, H.Size) | "]";
+    end func To_String;
+
+    //Fancy tree representation of Heap
+    func To_String_Tree(locked H : Heap) -> Univ_String is
+      //const H_Copy : Heap := H;
+      var Strings : Str_Array := Str_Array::Create(0 ..< H.Size, "");
+      const Elem_Size : Univ_Integer := H.To_Strings_Elem_Size(Strings);
+      var Widths : Int_ZVector := Int_ZVector::Create(H.Size, 0);
+      const Height := Tree_Height(Widths);
+      var Col := 0;
+      var Row := 0;
+      var Result : Univ_String := "";
+      //? operator used to ensure 2**negative doesn't happen
+      //Number of blanks to the left of the root
+      const Root_Left_Blanks := Height - Row >= 1 ?
+        Elem_Size * (2**(Height - Row - 1) - 1) : 0;
+      //Useful to know that "string" * negative returns ""
+      Result |= " " * Root_Left_Blanks;
+      for I in 0 ..< H.Size forward loop
+        Col += 1;
+        if Col == 1 then
+          Row += 1;
+        end if;
+        Result |= Strings[I];
+        if Col == Widths[I] then
+          Result |= "\n";
+          //Number of blanks to the left of first element on this row
+          const Left_Blanks := Height - Row >= 1 ?
+            Elem_Size * (2**(Height - Row - 1) - 1) : 0;
+          Result |= " " * Left_Blanks;
+          Col := 0;
+        else
+          //Number of blanks between elements of the same row
+          const Inter_Blanks := Height - Row >= 0 ?
+            Elem_Size * (2 * 2**(Height - Row) - 1) : 0;
+          Result |= " " * Inter_Blanks;
+        end if;
+      end loop
+      return Result;
+    end func To_String_Tree;
 end class Heap;
 
 func Test() is
-    type Int_Heap is Heap<Univ_Integer>;
-    var H : Int_Heap := Int_Heap::Create(#greater);
-    for J in 0 ..< 3 concurrent loop
-        for I in 0 ..< 3 concurrent loop
-            H |= I + J;
-        end loop;
+  type Int_Heap is Heap<Univ_Integer, #greater>;
+  var H : Int_Heap := Int_Heap::Create();
+  for J in 0 ..< 3 concurrent loop
+    for I in 0 ..< 3 concurrent loop
+      H |= I + J;
     end loop;
+  end loop;
+  Println(H.To_String_Tree());
+  for I in 0 .. 10 forward loop  
+    Println("Popped " | H.Pop());
+    if I == 5 then
+      for J in 10000 ..< 10010 concurrent loop
+        H |= J * 10;
+      end loop;
+    end if;
     Println(H.To_String_Tree());
-    for I in 0 .. 10 forward loop    
-        Println("Popped " | H.Pop());
-        if I == 5 then
-            for J in 10000 ..< 10010 concurrent loop
-                H |= J * 10;
-            end loop;
-        end if;
-        Println(H.To_String_Tree());
-    end loop;
+  end loop;
 end func Test;

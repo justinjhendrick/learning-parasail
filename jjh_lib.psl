@@ -2,8 +2,16 @@
 //  more math ops for Even and Odd
 //-----------------------------------------
 
+interface JJH<> is
+end interface JJH;
+
+interface JJH::Orders<> is
+  type Full_Ordering is Ordering {Full_Ordering in [#less, #equal, #greater]};
+  type Polarity is Ordering {Polarity in [#less, #greater]};
+end interface JJH::Orders;
+
 //Even numbers
-interface Even<> implements Countable<> is
+interface JJH::Even<> implements Countable<> is
     op "+"(Even; Univ_Integer) -> Even;
     op "+"(Univ_Integer; Even) -> Even;
     op "-"(Even; Univ_Integer) -> Even;
@@ -32,9 +40,9 @@ interface Even<> implements Countable<> is
       is in Countable_Set<Even>
     op "|"(Even; Even) -> Countable_Set<Even>
       is in Countable_Set<Even>
-end interface Even;
+end interface JJH::Even;
 
-class Even implements Countable<> is
+class JJH::Even implements Countable<> is
     const Val : Univ_Integer;
     exports
 
@@ -113,10 +121,10 @@ class Even implements Countable<> is
     func To_Int(E : Even) -> Univ_Integer is
         return E.Val;
     end func To_Int;
-end class Even;
+end class JJH::Even;
 
 //Odd numbers
-interface Odd<> implements Countable<> is
+interface JJH::Odd<> implements Countable<> is
     op "+"(Odd; Univ_Integer) -> Odd;
     op "+"(Univ_Integer; Odd) -> Odd;
     op "-"(Odd; Univ_Integer) -> Odd;
@@ -146,9 +154,9 @@ interface Odd<> implements Countable<> is
       is in Countable_Set<Odd>
     op "|"(Odd; Odd) -> Countable_Set<Odd>
       is in Countable_Set<Odd>
-end interface Odd;
+end interface JJH::Odd;
 
-class Odd implements Countable<> is
+class JJH::Odd implements Countable<> is
     const Val : Univ_Integer;
     exports
 
@@ -231,18 +239,18 @@ class Odd implements Countable<> is
     func To_Int(O : Odd) -> Univ_Integer is
         return O.Val;
     end func To_Int;
-end class Odd;
+end class JJH::Odd;
 
-concurrent interface Min_Int<> is
+concurrent interface JJH::Min_Int<> is
     func Create(Univ_Integer) -> Min_Int;
     op "from_univ"(Univ_Integer) -> Min_Int is Create;
     func Update(locked var Min_Int; Univ_Integer);
     func Get(Min_Int) -> Univ_Integer;
     func To_String(Min_Int) -> Univ_String;
-end interface Min_Int;
+end interface JJH::Min_Int;
 
 //Only updates if parameter is smaller than current value
-concurrent class Min_Int is
+concurrent class JJH::Min_Int is
     var Val : Univ_Integer;
     exports
 
@@ -263,18 +271,18 @@ concurrent class Min_Int is
     func To_String(MI : Min_Int) -> Univ_String is
         return "" | MI.Val;
     end func To_String;
-end class Min_Int;
+end class JJH::Min_Int;
 
-concurrent interface Max_Int<> is
+concurrent interface JJH::Max_Int<> is
     func Create(Univ_Integer) -> Max_Int;
     op "from_univ"(Univ_Integer) -> Max_Int is Create;
     func Update(locked var Max_Int; Univ_Integer);
     func Get(Max_Int) -> Univ_Integer;
     func To_String(Max_Int) -> Univ_String;
-end interface Max_Int;
+end interface JJH::Max_Int;
 
 //Only updates if parameter is larger than current value
-concurrent class Max_Int is
+concurrent class JJH::Max_Int is
     var Val : Univ_Integer;
     exports
 
@@ -295,11 +303,11 @@ concurrent class Max_Int is
     func To_String(MI : Max_Int) -> Univ_String is
         return "" | MI.Val;
     end func To_String;
-end class Max_Int;
+end class JJH::Max_Int;
 
 //Returns a divisor of N less than its square root
 //returns 1 if N is prime
-func Divisor(N : Univ_Integer) -> Univ_Integer is
+func JJH::Divisor(N : Univ_Integer) -> Univ_Integer is
     var Result : Univ_Integer := 1; //Assume prime until we find a divisor
     const Sqrt_N := Round_To_Int(Sqrt(Univ_Real::Int_To_Real(N))) + 1;
     for I in 2 .. Sqrt_N concurrent loop
@@ -308,12 +316,12 @@ func Divisor(N : Univ_Integer) -> Univ_Integer is
         end if;
     end loop;
     return Result;
-end func Divisor;
+end func JJH::Divisor;
 
 //Given Primes contains all the prime numbers smaller than N
 //returns #true if N is prime and adds it to prime
 //returns #false otherwise
-func Is_Prime(var Primes : ZVector<Univ_Integer>; N : Univ_Integer) -> Boolean is
+func JJH::Is_Prime(var Primes : ZVector<Univ_Integer>; N : Univ_Integer) -> Boolean is
     const Sqrt_N := Round_To_Int(Sqrt(Univ_Real::Int_To_Real(N))) + 1;
     for each P of Primes concurrent loop
         if P < Sqrt_N and N mod P == 0 then
@@ -322,20 +330,20 @@ func Is_Prime(var Primes : ZVector<Univ_Integer>; N : Univ_Integer) -> Boolean i
     end loop;
     Primes |= N;
     return #true;
-end func Is_Prime;
+end func JJH::Is_Prime;
 
 //some basic operations on Ints with added locks
 //This is necessary until 'concurrent Univ_Integer' works
-concurrent interface Atomic_Int<> is
+concurrent interface JJH::Atomic_Int<> is
     func Create(Univ_Integer) -> Atomic_Int;
     func To_String(Atomic_Int) -> Univ_String;
     op "from_univ"(Univ_Integer) -> Atomic_Int is Create;
     op "+="(locked var Atomic_Int; Univ_Integer);
     op "=?"(locked Atomic_Int; Univ_Integer) -> Ordering;
     //op "=?"(Univ_Integer; locked Atomic_Int) -> Ordering;
-end interface Atomic_Int;
+end interface JJH::Atomic_Int;
 
-concurrent class Atomic_Int is
+concurrent class JJH::Atomic_Int is
     var Val : Univ_Integer;
     exports
 
@@ -354,14 +362,14 @@ concurrent class Atomic_Int is
     op "=?"(locked AI : Atomic_Int; N : Univ_Integer) -> Ordering is
         return AI.Val =? N;
     end op "=?";
-end class Atomic_Int;
+end class JJH::Atomic_Int;
 
-func Linear_Interpolate(Vals : Map<Univ_Real, Univ_Real>; X, Low, High : Univ_Real)
+func JJH::Linear_Interpolate(Vals : Map<Univ_Real, Univ_Real>; X, Low, High : Univ_Real)
         -> Univ_Real is
     return Vals[Low] + (Vals[High] - Vals[Low]) * (X - Low) / (High - Low);
-end func Linear_Interpolate;
+end func JJH::Linear_Interpolate;
 
-func Lookup_Atan(X : Univ_Real) 
+func JJH::Lookup_Atan(X : Univ_Real) 
         {X in 0.7 .. 1.0 or X in -1.0 .. -0.7} -> Univ_Real is
     var Sign := 1;
     var X_Pos := X;
@@ -381,12 +389,12 @@ func Lookup_Atan(X : Univ_Real)
         Result := Linear_Interpolate(Arctan, X_Pos, 0.9, 1.0);
     end if;
     return Sign * Result;
-end func Lookup_Atan;
+end func JJH::Lookup_Atan;
 
 //Use taylor expansion at zero when possible (correct on -1 .. 1)
 //and reduce to -1 .. 1 otherwise
 //Accurate to ±7e-4
-func Atan(X : Univ_Real) -> Univ_Real is
+func JJH::Atan(X : Univ_Real) -> Univ_Real is
     //We want to reduce this problem to -1.0 .. 1.0
     //use relationship atan(1/abs X) == pi / 2 - atan(abs X)
     //and atan(-x) == -atan(x). atan is an odd function
@@ -402,15 +410,15 @@ func Atan(X : Univ_Real) -> Univ_Real is
         return X - (X ** 3) / 3.0 + (X ** 5) / 5.0 - (X ** 7) / 7.0 +
                (X ** 9) / 9.0 - (X ** 11) / 11.0;
     end if;
-end func Atan;
+end func JJH::Atan;
 
-func Test_Atan() is
+func JJH::Test_Atan() is
     for X := -1.5 then X + 0.01 while X <= 1.5 loop
         Println(X | ", " | Atan(X));
     end loop;
-end func Test_Atan;
+end func JJH::Test_Atan;
 
-func Atan2(Y, X : Univ_Real) -> optional Univ_Real is
+func JJH::Atan2(Y, X : Univ_Real) -> optional Univ_Real is
     const Pi := 3.1415926535898;
     const Half_Pi := 1.5707963267949;
     if X > 0.0 then
@@ -430,12 +438,12 @@ func Atan2(Y, X : Univ_Real) -> optional Univ_Real is
             return null;
         end if;
     end if;
-end func Atan2;
+end func JJH::Atan2;
 
-func Test_Atan2() is
+func JJH::Test_Atan2() is
     for Y := -5.0 then Y + 0.5 while Y <= 5.0 loop
         for X := -5.0 then X + 0.5 while X <= 5.0 loop
             Println("Atan2(" | Y | ", " | X | ") \t= " | Atan2(Y, X));
         end loop;
     end loop;
-end func Test_Atan2;
+end func JJH::Test_Atan2;
