@@ -18,7 +18,7 @@ end interface Heapable;
 
 concurrent interface Heap<E is Heapable<>; Pole : Orders::Polarity := #less> is
   // create empty Heap
-  op "[]"() -> Heap is create;
+  op "[]"() -> Heap is Create;
   // adds element to heap
   op "|="(locked var H : Heap; Elem : E) {Length(H') == Length(H) + 1};
 

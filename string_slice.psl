@@ -1,0 +1,28 @@
+//  Slice this string from the first Char matching Start to
+//  the first char after Start that matches End
+//
+//  Use Range_Func to specify how to handle inclusion/exclusion of
+//  Start and End characters
+//  Default is include Start and exclude End (..<)
+func Slice(S : String; Start, End : Char;
+   Range_Func : func (Int; Int) -> Countable_Range<Int> := "..<")
+   -> optional String is
+   var Slice_Start : optional Int;
+   var Slice_End : optional Int;
+   for each [I => Char] of S forward loop
+      if Slice_Start is null and Char == Start then
+         //  Match first occurrence of Start
+         Slice_Start := I;
+      elsif Slice_Start not null and Char == End then
+         //  Match first occurrence of End 
+         //  After Start has been found
+         Slice_End := I;
+         exit loop;
+      end if;
+   end loop;
+   if Slice_Start not null and Slice_End not null then
+      return S[Range_Func(Slice_Start, Slice_End)];
+   else
+      return null;
+   end if;
+end func Slice;
